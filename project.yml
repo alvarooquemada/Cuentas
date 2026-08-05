@@ -1,0 +1,62 @@
+# Equivalente XcodeGen del Cuentas.xcodeproj versionado.
+# Sólo hace falta si quieres regenerar el proyecto: `xcodegen generate`.
+
+name: Cuentas
+options:
+  bundleIdPrefix: com.alvaroquemada
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: es
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_PREVIEWS: "YES"
+    GENERATE_INFOPLIST_FILE: "NO"
+
+targets:
+  Cuentas:
+    type: application
+    platform: iOS
+    sources:
+      - Cuentas
+      - Shared
+    dependencies:
+      - target: CuentasWidgetExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alvaroquemada.Cuentas
+        INFOPLIST_FILE: Config/Cuentas-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/Cuentas.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+  CuentasWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CuentasWidget
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alvaroquemada.Cuentas.CuentasWidget
+        INFOPLIST_FILE: Config/CuentasWidget-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/CuentasWidget.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+        SKIP_INSTALL: "YES"
+
+schemes:
+  Cuentas:
+    build:
+      targets:
+        Cuentas: all
+    run:
+      config: Debug
+    archive:
+      config: Release
