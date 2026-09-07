@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+  <title>Cuentas</title>
+  <meta name="description" content="Control de gastos e ingresos" />
+  <meta name="theme-color" content="#0f7654" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cuentas" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <h1 id="topbar-title">Resumen</h1>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="hero-balance">
+        <div class="label">Balance del mes</div>
+        <div class="amount" id="dash-balance">0,00 €</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat income">
+          <div class="stat-label">Ingresos</div>
+          <div class="stat-value" id="dash-income">0,00 €</div>
+        </div>
+        <div class="stat expense">
+          <div class="stat-label">Gastos</div>
+          <div class="stat-value" id="dash-expense">0,00 €</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:10px">Por categoría este mes</div>
+        <div class="cat-breakdown-row">
+          <canvas class="donut" id="dash-donut" width="120" height="120" style="width:120px;height:120px"></canvas>
+          <div class="cat-legend" id="dash-legend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:10px">Últimos meses</div>
+        <canvas id="dash-bars" style="width:100%;height:150px"></canvas>
+      </div>
+
+      <div class="section-title">Últimos movimientos</div>
+      <div id="dash-recent" style="display:flex;flex-direction:column;gap:8px"></div>
+    </section>
+
+    <!-- MOVEMENTS LIST -->
+    <section class="view" id="view-list">
+      <div class="field">
+        <input type="text" id="search-input" placeholder="Buscar por concepto o categoría" />
+      </div>
+      <div class="filters" id="type-filters">
+        <button class="chip active" data-type="all">Todo</button>
+        <button class="chip" data-type="expense">Gastos</button>
+        <button class="chip" data-type="income">Ingresos</button>
+      </div>
+      <div class="filters" id="cat-filters"></div>
+      <div id="movements-list" style="display:flex;flex-direction:column;gap:16px"></div>
+    </section>
+
+    <!-- ADD / EDIT MOVEMENT -->
+    <section class="view" id="view-add">
+      <div class="type-toggle">
+        <button type="button" class="active expense" data-type="expense">Gasto</button>
+        <button type="button" data-type="income">Ingreso</button>
+      </div>
+
+      <div class="field">
+        <label for="amount-input">Importe</label>
+        <input type="number" id="amount-input" inputmode="decimal" step="0.01" min="0" placeholder="0,00" />
+      </div>
+
+      <div class="field">
+        <label>Categoría</label>
+        <div class="cat-grid" id="cat-grid"></div>
+      </div>
+
+      <div class="field">
+        <label for="concept-input">Concepto</label>
+        <input type="text" id="concept-input" placeholder="Ej. Compra semanal" />
+      </div>
+
+      <div class="field">
+        <label for="date-input">Fecha</label>
+        <input type="date" id="date-input" />
+        <div class="filters" style="margin-top:6px">
+          <button class="chip" id="date-today">Hoy</button>
+          <button class="chip" id="date-yesterday">Ayer</button>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="save-movement-btn">Guardar</button>
+      <button class="btn-secondary btn-danger" id="delete-movement-btn" hidden>Eliminar movimiento</button>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="card">
+        <div class="section-title" style="margin-bottom:6px">Categorías</div>
+        <div id="category-manage-list"></div>
+        <button class="btn-secondary" id="add-category-btn" style="margin-top:10px">+ Añadir categoría</button>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:6px">Preferencias</div>
+        <div class="settings-row">
+          <span>Divisa</span>
+          <select id="currency-select">
+            <option value="EUR">EUR (€)</option>
+            <option value="USD">USD ($)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="PLN">PLN (zł)</option>
+            <option value="MXN">MXN ($)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:6px">Datos</div>
+        <p style="font-size:13px;color:var(--text-dim);margin-top:0">
+          Todo se guarda solo en este dispositivo, en este navegador. Exporta
+          una copia de vez en cuando para no perder tu histórico.
+        </p>
+        <button class="btn-secondary" id="export-btn">Exportar copia (JSON)</button>
+        <button class="btn-secondary" id="import-btn" style="margin-top:8px">Importar copia</button>
+        <input type="file" id="import-file" accept="application/json" hidden />
+        <button class="btn-secondary btn-danger" id="reset-btn" style="margin-top:8px">Borrar todos los datos</button>
+      </div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <button data-view="dashboard" class="active">
+      <span class="nav-icon">📊</span><span>Resumen</span>
+    </button>
+    <button data-view="list">
+      <span class="nav-icon">📒</span><span>Movimientos</span>
+    </button>
+    <button data-view="add">
+      <span class="nav-icon">➕</span><span>Añadir</span>
+    </button>
+    <button data-view="settings">
+      <span class="nav-icon">⚙️</span><span>Ajustes</span>
+    </button>
+  </nav>
+
+  <div class="modal-overlay" id="category-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="category-modal-title">Nueva categoría</h2>
+      <div class="field">
+        <label for="cat-name-input">Nombre</label>
+        <input type="text" id="cat-name-input" placeholder="Ej. Suscripciones" />
+      </div>
+      <div class="field">
+        <label for="cat-icon-input">Icono (emoji)</label>
+        <input type="text" id="cat-icon-input" placeholder="🏷️" maxlength="4" />
+      </div>
+      <div class="field">
+        <label for="cat-color-input">Color</label>
+        <input type="color" id="cat-color-input" class="color-input" value="#8a94a6" />
+      </div>
+      <button class="btn-primary" id="cat-save-btn">Guardar</button>
+      <button class="btn-secondary" id="cat-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="cat-delete-btn" style="margin-top:8px" hidden>Eliminar categoría</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
