@@ -15,12 +15,30 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+function defaultWallet() {
+  return {
+    cash: 0,
+    banks: [],
+    investments: [],
+  };
+}
+
 function defaultState() {
   return {
-    version: 1,
+    version: 2,
     settings: { currency: "EUR", theme: "system" },
     categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })),
     movements: [],
+    wallet: defaultWallet(),
+  };
+}
+
+function normalizeWallet(raw) {
+  const w = raw || {};
+  return {
+    cash: typeof w.cash === "number" ? w.cash : 0,
+    banks: Array.isArray(w.banks) ? w.banks : [],
+    investments: Array.isArray(w.investments) ? w.investments : [],
   };
 }
 
@@ -31,12 +49,13 @@ function load() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return defaultState();
     return {
-      version: 1,
+      version: 2,
       settings: { ...defaultState().settings, ...(parsed.settings || {}) },
       categories: Array.isArray(parsed.categories) && parsed.categories.length
         ? parsed.categories
         : defaultState().categories,
       movements: Array.isArray(parsed.movements) ? parsed.movements : [],
+      wallet: normalizeWallet(parsed.wallet),
     };
   } catch (e) {
     console.error("Error leyendo datos, se restablece almacenamiento local", e);
@@ -134,17 +153,68 @@ export const Store = {
   importData(json) {
     const parsed = JSON.parse(json);
     state = {
-      version: 1,
+      version: 2,
       settings: { ...defaultState().settings, ...(parsed.settings || {}) },
       categories: Array.isArray(parsed.categories) && parsed.categories.length
         ? parsed.categories
         : defaultState().categories,
       movements: Array.isArray(parsed.movements) ? parsed.movements : [],
+      wallet: normalizeWallet(parsed.wallet),
     };
     persist();
   },
   resetAll() {
     state = defaultState();
+    persist();
+  },
+
+  // ---- Cartera (efectivo, bancos, inversiones) ----
+  getWallet() {
+    return state.wallet;
+  },
+  setCash(amount) {
+    state.wallet.cash = Math.round(Number(amount) * 100) / 100 || 0;
+    persist();
+  },
+  addBankAccount({ name, balance }) {
+    const acc = { id: uid(), name, balance: Math.round(Number(balance) * 100) / 100 || 0 };
+    state.wallet.banks.push(acc);
+    persist();
+    return acc;
+  },
+  updateBankAccount(id, patch) {
+    const acc = state.wallet.banks.find((b) => b.id === id);
+    if (!acc) return;
+    Object.assign(acc, patch);
+    if (patch.balance !== undefined) acc.balance = Math.round(Number(patch.balance) * 100) / 100;
+    persist();
+  },
+  deleteBankAccount(id) {
+    state.wallet.banks = state.wallet.banks.filter((b) => b.id !== id);
+    persist();
+  },
+  addInvestment({ name, bank, invested, currentValue }) {
+    const inv = {
+      id: uid(),
+      name,
+      bank: bank || "",
+      invested: Math.round(Number(invested) * 100) / 100 || 0,
+      currentValue: Math.round(Number(currentValue) * 100) / 100 || 0,
+    };
+    state.wallet.investments.push(inv);
+    persist();
+    return inv;
+  },
+  updateInvestment(id, patch) {
+    const inv = state.wallet.investments.find((i) => i.id === id);
+    if (!inv) return;
+    Object.assign(inv, patch);
+    if (patch.invested !== undefined) inv.invested = Math.round(Number(patch.invested) * 100) / 100;
+    if (patch.currentValue !== undefined) inv.currentValue = Math.round(Number(patch.currentValue) * 100) / 100;
+    persist();
+  },
+  deleteInvestment(id) {
+    state.wallet.investments = state.wallet.investments.filter((i) => i.id !== id);
     persist();
   },
 };
@@ -173,4 +243,35 @@ export function monthLabel(key) {
   const d = new Date(y, m - 1, 1);
   const label = d.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
   return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function toDate(iso) {
+  return new Date(iso + "T00:00:00");
+}
+
+function toISO(d) {
+  const copy = new Date(d);
+  copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+  return copy.toISOString().slice(0, 10);
+}
+
+export function currentWeekRange() {
+  const today = toDate(todayISO());
+  const dow = (today.getDay() + 6) % 7; // Monday = 0
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dow);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: toISO(monday), end: toISO(sunday) };
+}
+
+export function weekLabel(range) {
+  const start = toDate(range.start);
+  const end = toDate(range.end);
+  const fmt = (d) => d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+export function inRange(dateISO, range) {
+  return dateISO >= range.start && dateISO <= range.end;
 }

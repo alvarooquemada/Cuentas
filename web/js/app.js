@@ -1,4 +1,4 @@
-import { Store, formatMoney, todayISO, monthKey, monthLabel } from "./store.js";
+import { Store, formatMoney, todayISO, monthKey, monthLabel, currentWeekRange, inRange } from "./store.js";
 import { drawDonut, drawBars } from "./charts.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -13,6 +13,9 @@ const state = {
   listCatFilter: "all",
   searchQuery: "",
   editingCategoryId: null,
+  dashPeriod: "week",
+  editingBankId: null,
+  editingInvestmentId: null,
 };
 
 // ---------- Navigation ----------
@@ -20,6 +23,7 @@ const titles = {
   dashboard: "Resumen",
   list: "Movimientos",
   add: "Nuevo movimiento",
+  wallet: "Cartera",
   settings: "Ajustes",
 };
 
@@ -31,6 +35,7 @@ function setView(view) {
   $$(".bottom-nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   if (view === "dashboard") renderDashboard();
   if (view === "list") renderList();
+  if (view === "wallet") renderWallet();
   if (view === "settings") renderSettings();
 }
 
@@ -52,15 +57,36 @@ function showToast(msg) {
 }
 
 // ---------- Dashboard ----------
+$$("#period-toggle button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.dashPeriod = btn.dataset.period;
+    renderDashboard();
+  });
+});
+
 function renderDashboard() {
+  $$("#period-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.period === state.dashPeriod));
+
   const settings = Store.getSettings();
   const currency = settings.currency;
   const movements = Store.getMovements();
-  const currentMonth = monthKey(todayISO());
+  const isWeek = state.dashPeriod === "week";
 
-  const monthMovs = movements.filter((m) => monthKey(m.date) === currentMonth);
-  const income = monthMovs.filter((m) => m.type === "income").reduce((s, m) => s + m.amount, 0);
-  const expense = monthMovs.filter((m) => m.type === "expense").reduce((s, m) => s + m.amount, 0);
+  let periodMovs;
+  if (isWeek) {
+    const range = currentWeekRange();
+    periodMovs = movements.filter((m) => inRange(m.date, range));
+    $("#dash-period-label").textContent = "Balance de la semana";
+    $("#dash-cat-title").textContent = "Por categoría esta semana";
+  } else {
+    const currentMonth = monthKey(todayISO());
+    periodMovs = movements.filter((m) => monthKey(m.date) === currentMonth);
+    $("#dash-period-label").textContent = "Balance del mes";
+    $("#dash-cat-title").textContent = "Por categoría este mes";
+  }
+
+  const income = periodMovs.filter((m) => m.type === "income").reduce((s, m) => s + m.amount, 0);
+  const expense = periodMovs.filter((m) => m.type === "expense").reduce((s, m) => s + m.amount, 0);
   const balance = income - expense;
 
   $("#dash-balance").textContent = formatMoney(balance, currency);
@@ -69,7 +95,7 @@ function renderDashboard() {
   $("#dash-expense").textContent = formatMoney(expense, currency);
 
   const byCat = new Map();
-  monthMovs.filter((m) => m.type === "expense").forEach((m) => {
+  periodMovs.filter((m) => m.type === "expense").forEach((m) => {
     byCat.set(m.categoryId, (byCat.get(m.categoryId) || 0) + m.amount);
   });
   const slices = Array.from(byCat.entries())
@@ -83,7 +109,7 @@ function renderDashboard() {
   const legend = $("#dash-legend");
   legend.innerHTML = "";
   if (!slices.length) {
-    legend.innerHTML = '<div class="empty-state" style="padding:8px 0">Sin gastos este mes</div>';
+    legend.innerHTML = `<div class="empty-state" style="padding:8px 0">Sin gastos ${isWeek ? "esta semana" : "este mes"}</div>`;
   } else {
     slices.slice(0, 6).forEach((s) => {
       const row = document.createElement("div");
@@ -399,6 +425,170 @@ $("#cat-delete-btn").addEventListener("click", () => {
     $("#category-modal").hidden = true;
     renderSettings();
     showToast("Categoría eliminada");
+  }
+});
+
+// ---------- Wallet (Cartera) ----------
+function renderWallet() {
+  const currency = Store.getSettings().currency;
+  const wallet = Store.getWallet();
+
+  const banksTotal = wallet.banks.reduce((s, b) => s + b.balance, 0);
+  const investmentsTotal = wallet.investments.reduce((s, i) => s + i.currentValue, 0);
+  const total = wallet.cash + banksTotal + investmentsTotal;
+
+  $("#wallet-total").textContent = formatMoney(total, currency);
+  $("#cash-amount").textContent = formatMoney(wallet.cash, currency);
+  $("#banks-total").textContent = formatMoney(banksTotal, currency);
+  $("#investments-total").textContent = formatMoney(investmentsTotal, currency);
+
+  const banksList = $("#banks-list");
+  banksList.innerHTML = "";
+  if (!wallet.banks.length) {
+    banksList.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin cuentas bancarias todavía.</div>';
+  } else {
+    wallet.banks.forEach((b) => {
+      const row = document.createElement("div");
+      row.className = "wallet-item-row";
+      row.innerHTML = `
+        <div><div class="wi-name">${escapeHtml(b.name)}</div></div>
+        <div><div class="wi-value">${formatMoney(b.balance, currency)}</div></div>
+      `;
+      row.addEventListener("click", () => openBankModal(b.id));
+      banksList.appendChild(row);
+    });
+  }
+
+  const invList = $("#investments-list");
+  invList.innerHTML = "";
+  if (!wallet.investments.length) {
+    invList.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin inversiones todavía.</div>';
+  } else {
+    wallet.investments.forEach((inv) => {
+      const gain = inv.currentValue - inv.invested;
+      const gainPct = inv.invested ? (gain / inv.invested) * 100 : 0;
+      const gainClass = gain > 0 ? "up" : gain < 0 ? "down" : "";
+      const sign = gain > 0 ? "+" : "";
+      const row = document.createElement("div");
+      row.className = "wallet-item-row";
+      row.innerHTML = `
+        <div>
+          <div class="wi-name">${escapeHtml(inv.name)}</div>
+          <div class="wi-sub">${escapeHtml(inv.bank || "Sin banco")} · invertido ${formatMoney(inv.invested, currency)}</div>
+        </div>
+        <div>
+          <div class="wi-value">${formatMoney(inv.currentValue, currency)}</div>
+          <div class="wi-gain ${gainClass}">${sign}${formatMoney(gain, currency)} (${sign}${gainPct.toFixed(1)}%)</div>
+        </div>
+      `;
+      row.addEventListener("click", () => openInvestmentModal(inv.id));
+      invList.appendChild(row);
+    });
+  }
+}
+
+$("#edit-cash-btn").addEventListener("click", () => {
+  $("#cash-input").value = Store.getWallet().cash || "";
+  $("#cash-modal").hidden = false;
+});
+$("#cash-cancel-btn").addEventListener("click", () => ($("#cash-modal").hidden = true));
+$("#cash-save-btn").addEventListener("click", () => {
+  const amount = parseFloat($("#cash-input").value) || 0;
+  Store.setCash(amount);
+  $("#cash-modal").hidden = true;
+  renderWallet();
+  showToast("Efectivo actualizado");
+});
+
+function openBankModal(bankId) {
+  state.editingBankId = bankId;
+  if (bankId) {
+    const b = Store.getWallet().banks.find((x) => x.id === bankId);
+    $("#bank-modal-title").textContent = "Editar cuenta bancaria";
+    $("#bank-name-input").value = b.name;
+    $("#bank-balance-input").value = b.balance;
+    $("#bank-delete-btn").hidden = false;
+  } else {
+    $("#bank-modal-title").textContent = "Nueva cuenta bancaria";
+    $("#bank-name-input").value = "";
+    $("#bank-balance-input").value = "";
+    $("#bank-delete-btn").hidden = true;
+  }
+  $("#bank-modal").hidden = false;
+}
+$("#add-bank-btn").addEventListener("click", () => openBankModal(null));
+$("#bank-cancel-btn").addEventListener("click", () => ($("#bank-modal").hidden = true));
+$("#bank-save-btn").addEventListener("click", () => {
+  const name = $("#bank-name-input").value.trim();
+  if (!name) {
+    showToast("Ponle un nombre al banco");
+    return;
+  }
+  const balance = parseFloat($("#bank-balance-input").value) || 0;
+  if (state.editingBankId) {
+    Store.updateBankAccount(state.editingBankId, { name, balance });
+  } else {
+    Store.addBankAccount({ name, balance });
+  }
+  $("#bank-modal").hidden = true;
+  renderWallet();
+  showToast("Cuenta guardada");
+});
+$("#bank-delete-btn").addEventListener("click", () => {
+  if (state.editingBankId && confirm("¿Eliminar esta cuenta bancaria?")) {
+    Store.deleteBankAccount(state.editingBankId);
+    $("#bank-modal").hidden = true;
+    renderWallet();
+    showToast("Cuenta eliminada");
+  }
+});
+
+function openInvestmentModal(investmentId) {
+  state.editingInvestmentId = investmentId;
+  if (investmentId) {
+    const inv = Store.getWallet().investments.find((x) => x.id === investmentId);
+    $("#investment-modal-title").textContent = "Editar inversión";
+    $("#inv-name-input").value = inv.name;
+    $("#inv-bank-input").value = inv.bank || "";
+    $("#inv-invested-input").value = inv.invested;
+    $("#inv-current-input").value = inv.currentValue;
+    $("#inv-delete-btn").hidden = false;
+  } else {
+    $("#investment-modal-title").textContent = "Nueva inversión";
+    $("#inv-name-input").value = "";
+    $("#inv-bank-input").value = "";
+    $("#inv-invested-input").value = "";
+    $("#inv-current-input").value = "";
+    $("#inv-delete-btn").hidden = true;
+  }
+  $("#investment-modal").hidden = false;
+}
+$("#add-investment-btn").addEventListener("click", () => openInvestmentModal(null));
+$("#inv-cancel-btn").addEventListener("click", () => ($("#investment-modal").hidden = true));
+$("#inv-save-btn").addEventListener("click", () => {
+  const name = $("#inv-name-input").value.trim();
+  if (!name) {
+    showToast("Ponle un nombre al fondo");
+    return;
+  }
+  const bank = $("#inv-bank-input").value.trim();
+  const invested = parseFloat($("#inv-invested-input").value) || 0;
+  const currentValue = parseFloat($("#inv-current-input").value) || 0;
+  if (state.editingInvestmentId) {
+    Store.updateInvestment(state.editingInvestmentId, { name, bank, invested, currentValue });
+  } else {
+    Store.addInvestment({ name, bank, invested, currentValue });
+  }
+  $("#investment-modal").hidden = true;
+  renderWallet();
+  showToast("Inversión guardada");
+});
+$("#inv-delete-btn").addEventListener("click", () => {
+  if (state.editingInvestmentId && confirm("¿Eliminar esta inversión?")) {
+    Store.deleteInvestment(state.editingInvestmentId);
+    $("#investment-modal").hidden = true;
+    renderWallet();
+    showToast("Inversión eliminada");
   }
 });
 
