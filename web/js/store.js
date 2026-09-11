@@ -1,15 +1,41 @@
 const STORAGE_KEY = "cuentas.v1";
 
 const DEFAULT_CATEGORIES = [
-  { id: "comida", name: "Comida", icon: "🍽️", color: "#f28b30" },
-  { id: "alojamiento", name: "Alojamiento", icon: "🏠", color: "#4f7cff" },
-  { id: "transporte", name: "Transporte", icon: "🚌", color: "#7a5cff" },
-  { id: "ocio", name: "Ocio", icon: "🎉", color: "#e5548c" },
-  { id: "viajes", name: "Viajes", icon: "✈️", color: "#17a5c9" },
-  { id: "facturas", name: "Facturas", icon: "🧾", color: "#c9a417" },
-  { id: "salario", name: "Salario / Ingreso", icon: "💶", color: "#1fa971" },
-  { id: "otros", name: "Otros", icon: "📦", color: "#8a94a6" },
+  { id: "comida", name: "Comida", icon: "🍽️", color: "#c1694f" },
+  { id: "alojamiento", name: "Alojamiento", icon: "🏠", color: "#4f6f8f" },
+  { id: "transporte", name: "Transporte", icon: "🚌", color: "#3f8f86" },
+  { id: "ocio", name: "Ocio", icon: "🎉", color: "#a1527a" },
+  { id: "viajes", name: "Viajes", icon: "✈️", color: "#b98b3d" },
+  { id: "facturas", name: "Facturas", icon: "🧾", color: "#7d7650" },
+  { id: "salario", name: "Salario / Ingreso", icon: "💶", color: "#1f8a63" },
+  { id: "otros", name: "Otros", icon: "📦", color: "#6b6759" },
 ];
+
+// Colores de la primera versión (paleta web genérica). Si una categoría
+// de serie sigue con uno de estos colores es que el usuario no la ha
+// personalizado, así que al cargar la migramos a la paleta nueva.
+const LEGACY_DEFAULT_COLORS = {
+  comida: "#f28b30",
+  alojamiento: "#4f7cff",
+  transporte: "#7a5cff",
+  ocio: "#e5548c",
+  viajes: "#17a5c9",
+  facturas: "#c9a417",
+  salario: "#1fa971",
+  otros: "#8a94a6",
+};
+
+function migrateCategoryColors(categories) {
+  const byId = new Map(DEFAULT_CATEGORIES.map((c) => [c.id, c]));
+  return categories.map((c) => {
+    const legacy = LEGACY_DEFAULT_COLORS[c.id];
+    const fresh = byId.get(c.id);
+    if (legacy && fresh && c.color === legacy) {
+      return { ...c, color: fresh.color };
+    }
+    return c;
+  });
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -48,12 +74,13 @@ function load() {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return defaultState();
+    const categories = Array.isArray(parsed.categories) && parsed.categories.length
+      ? migrateCategoryColors(parsed.categories)
+      : defaultState().categories;
     return {
       version: 2,
       settings: { ...defaultState().settings, ...(parsed.settings || {}) },
-      categories: Array.isArray(parsed.categories) && parsed.categories.length
-        ? parsed.categories
-        : defaultState().categories,
+      categories,
       movements: Array.isArray(parsed.movements) ? parsed.movements : [],
       wallet: normalizeWallet(parsed.wallet),
     };

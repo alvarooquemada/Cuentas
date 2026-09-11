@@ -105,7 +105,8 @@ function renderDashboard() {
     })
     .sort((a, b) => b.value - a.value);
 
-  drawDonut($("#dash-donut"), slices);
+  const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  drawDonut($("#dash-donut"), slices, { emptyColor: isDark ? "rgba(154,151,140,0.18)" : "rgba(107,103,89,0.15)" });
   const legend = $("#dash-legend");
   legend.innerHTML = "";
   if (!slices.length) {
@@ -131,8 +132,11 @@ function renderDashboard() {
       expense: movs.filter((m) => m.type === "expense").reduce((s, m) => s + m.amount, 0),
     });
   }
-  const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  drawBars($("#dash-bars"), months, { labelColor: isDark ? "#96a2b5" : "#5b6572" });
+  drawBars($("#dash-bars"), months, {
+    labelColor: isDark ? "#9a978c" : "#6b6759",
+    incomeColor: isDark ? "#3ecf8e" : "#1f8a63",
+    expenseColor: isDark ? "#ec7791" : "#b5455e",
+  });
 
   const recent = $("#dash-recent");
   recent.innerHTML = "";

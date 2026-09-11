@@ -1,4 +1,18 @@
-export function drawDonut(canvas, slices) {
+function roundRectTop(ctx, x, y, w, h, r) {
+  if (h <= 0) return;
+  const radius = Math.min(r, w / 2, h);
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x, y + radius);
+  ctx.arcTo(x, y, x + radius, y, radius);
+  ctx.lineTo(x + w - radius, y);
+  ctx.arcTo(x + w, y, x + w, y + radius, radius);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+}
+
+export function drawDonut(canvas, slices, opts = {}) {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   const size = canvas.clientWidth || 220;
@@ -16,7 +30,7 @@ export function drawDonut(canvas, slices) {
   if (total <= 0) {
     ctx.beginPath();
     ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(148,163,184,0.25)";
+    ctx.fillStyle = opts.emptyColor || "rgba(148,163,184,0.25)";
     ctx.fill();
     return;
   }
@@ -67,11 +81,11 @@ export function drawBars(canvas, bars, opts = {}) {
     const incH = (b.income / max) * chartH;
     const expH = (b.expense / max) * chartH;
 
-    ctx.fillStyle = "#1fa971";
-    ctx.fillRect(gx - barWidth - 2, chartH - incH, barWidth, incH);
+    ctx.fillStyle = opts.incomeColor || "#1f8a63";
+    roundRectTop(ctx, gx - barWidth - 2, chartH - incH, barWidth, incH, 3);
 
-    ctx.fillStyle = "#e5548c";
-    ctx.fillRect(gx + 2, chartH - expH, barWidth, expH);
+    ctx.fillStyle = opts.expenseColor || "#b5455e";
+    roundRectTop(ctx, gx + 2, chartH - expH, barWidth, expH, 3);
 
     ctx.fillStyle = opts.labelColor || "#94a3b8";
     ctx.fillText(b.label, gx, height - 6);
