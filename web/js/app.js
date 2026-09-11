@@ -105,8 +105,7 @@ function renderDashboard() {
     })
     .sort((a, b) => b.value - a.value);
 
-  const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  drawDonut($("#dash-donut"), slices, { emptyColor: isDark ? "rgba(154,151,140,0.18)" : "rgba(107,103,89,0.15)" });
+  drawDonut($("#dash-donut"), slices, { emptyColor: "rgba(154,151,140,0.18)" });
   const legend = $("#dash-legend");
   legend.innerHTML = "";
   if (!slices.length) {
@@ -133,9 +132,9 @@ function renderDashboard() {
     });
   }
   drawBars($("#dash-bars"), months, {
-    labelColor: isDark ? "#9a978c" : "#6b6759",
-    incomeColor: isDark ? "#3ecf8e" : "#1f8a63",
-    expenseColor: isDark ? "#ec7791" : "#b5455e",
+    labelColor: "#9a978c",
+    incomeColor: "#4bbf8a",
+    expenseColor: "#d97a90",
   });
 
   const recent = $("#dash-recent");

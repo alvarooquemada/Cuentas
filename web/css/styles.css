@@ -1,44 +1,44 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Manrope:wght@400..800&display=swap");
 
+/*
+ * Tema fijo: despacho oscuro. No depende del modo claro/oscuro del
+ * teléfono a propósito — es la identidad visual de la app, gris
+ * grafito con acentos de madera de nogal y latón envejecido.
+ */
 :root {
-  --bg: #f4f1ea;
-  --surface: #ffffff;
-  --surface-2: #eeeae0;
-  --text: #1b2130;
-  --text-dim: #6b6759;
-  --border: #e4ded0;
-  --accent: #9c7a1f;
-  --accent-soft: #f3ead0;
-  --accent-contrast: #ffffff;
-  --income: #1f8a63;
-  --income-soft: #dcf1e6;
-  --expense: #b5455e;
-  --expense-soft: #f6dee3;
-  --danger: #c0392b;
+  --bg: #17181b;
+  --surface: #212226;
+  --surface-2: #2a2b30;
+  --text: #f1efe9;
+  --text-dim: #9a9791;
+  --border: #37383d;
+  --accent: #c9a24a;
+  --accent-soft: #362c17;
+  --accent-contrast: #16130a;
+  --income: #4bbf8a;
+  --income-soft: #16332a;
+  --expense: #d97a90;
+  --expense-soft: #3a2029;
+  --danger: #e05a56;
   --radius: 18px;
   --radius-sm: 12px;
-  --shadow: 0 1px 2px rgba(30, 25, 10, 0.04), 0 8px 24px -12px rgba(30, 25, 10, 0.14);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 28px -14px rgba(0, 0, 0, 0.65);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+
+  --wood-dark: #2c1c11;
+  --wood-mid: #4a2f1c;
+  --wood-light: #6b4526;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c0f14;
-    --surface: #161a22;
-    --surface-2: #1f2530;
-    --text: #f2efe6;
-    --text-dim: #9a978c;
-    --border: #2a303c;
-    --accent: #d4af5a;
-    --accent-soft: #2e2717;
-    --accent-contrast: #14100a;
-    --income: #3ecf8e;
-    --income-soft: #163329;
-    --expense: #ec7791;
-    --expense-soft: #391f28;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -14px rgba(0, 0, 0, 0.6);
-  }
+.wood-panel {
+  background-color: var(--wood-mid);
+  background-image:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.16) 0px, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(100deg, rgba(255, 214, 150, 0.05) 0px, rgba(255, 214, 150, 0.05) 1px, transparent 1px, transparent 11px),
+    linear-gradient(160deg, var(--wood-light), var(--wood-dark) 85%);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, var(--shadow);
 }
 
 * { box-sizing: border-box; }
@@ -76,11 +76,22 @@ button, input, select {
   justify-content: space-between;
 }
 
+.topbar {
+  background-color: var(--wood-mid);
+  background-image:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.16) 0px, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(100deg, rgba(255, 214, 150, 0.05) 0px, rgba(255, 214, 150, 0.05) 1px, transparent 1px, transparent 11px),
+    linear-gradient(160deg, var(--wood-light), var(--wood-dark) 85%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+}
+
 .topbar h1 {
   font-size: 23px;
   margin: 0;
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--accent);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .view { padding: 4px 16px 28px; display: none; flex-direction: column; gap: 16px; }
@@ -96,10 +107,18 @@ button, input, select {
 
 .hero-balance {
   text-align: center;
-  padding: 22px 16px 10px;
+  padding: 26px 16px;
+  border-radius: var(--radius);
+  background-color: var(--wood-mid);
+  background-image:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.16) 0px, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(100deg, rgba(255, 214, 150, 0.05) 0px, rgba(255, 214, 150, 0.05) 1px, transparent 1px, transparent 11px),
+    linear-gradient(160deg, var(--wood-light), var(--wood-dark) 85%);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, var(--shadow);
 }
-.hero-balance .label { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
-.hero-balance .amount { font-size: 42px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -0.03em; }
+.hero-balance .label { color: #e9d9b8; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; opacity: 0.85; }
+.hero-balance .amount { font-size: 42px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -0.03em; color: #fbf6ec; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
 .hero-balance .amount.negative { color: var(--expense); }
 
 .segmented {
@@ -374,10 +393,18 @@ input[type="text"], input[type="number"], input[type="date"], select {
 /* ---- Cartera ---- */
 .wallet-total {
   text-align: center;
-  padding: 22px 16px 6px;
+  padding: 26px 16px;
+  border-radius: var(--radius);
+  background-color: var(--wood-mid);
+  background-image:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.16) 0px, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 5px),
+    repeating-linear-gradient(100deg, rgba(255, 214, 150, 0.05) 0px, rgba(255, 214, 150, 0.05) 1px, transparent 1px, transparent 11px),
+    linear-gradient(160deg, var(--wood-light), var(--wood-dark) 85%);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, var(--shadow);
 }
-.wallet-total .label { color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
-.wallet-total .amount { font-size: 38px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -0.03em; }
+.wallet-total .label { color: #e9d9b8; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; opacity: 0.85; }
+.wallet-total .amount { font-size: 38px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -0.03em; color: #fbf6ec; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
 
 .wallet-section-header {
   display: flex;
