@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>Cuentas</title>
   <meta name="description" content="Control de gastos e ingresos" />
-  <meta name="theme-color" content="#0f7654" />
+  <meta name="theme-color" content="#9c7a1f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cuentas" />
@@ -23,8 +23,13 @@
 
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
+      <div class="segmented" id="period-toggle">
+        <button type="button" class="active" data-period="week">Semana</button>
+        <button type="button" data-period="month">Mes</button>
+      </div>
+
       <div class="hero-balance">
-        <div class="label">Balance del mes</div>
+        <div class="label" id="dash-period-label">Balance de la semana</div>
         <div class="amount" id="dash-balance">0,00 €</div>
       </div>
       <div class="stat-row">
@@ -39,7 +44,7 @@
       </div>
 
       <div class="card">
-        <div class="section-title" style="margin-bottom:10px">Por categoría este mes</div>
+        <div class="section-title" style="margin-bottom:10px" id="dash-cat-title">Por categoría esta semana</div>
         <div class="cat-breakdown-row">
           <canvas class="donut" id="dash-donut" width="120" height="120" style="width:120px;height:120px"></canvas>
           <div class="cat-legend" id="dash-legend"></div>
@@ -104,6 +109,42 @@
       <button class="btn-secondary btn-danger" id="delete-movement-btn" hidden>Eliminar movimiento</button>
     </section>
 
+    <!-- WALLET (Cartera) -->
+    <section class="view" id="view-wallet">
+      <div class="wallet-total">
+        <div class="label">Patrimonio total</div>
+        <div class="amount" id="wallet-total">0,00 €</div>
+      </div>
+
+      <div class="card">
+        <div class="wallet-section-header">
+          <div class="section-title">Efectivo</div>
+        </div>
+        <div class="cash-row" style="margin-top:10px">
+          <div class="cash-amount" id="cash-amount">0,00 €</div>
+          <button type="button" id="edit-cash-btn">Editar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="wallet-section-header">
+          <div class="section-title">Bancos</div>
+          <div class="total" id="banks-total">0,00 €</div>
+        </div>
+        <div id="banks-list" style="margin-top:6px"></div>
+        <button class="add-link" id="add-bank-btn">+ Añadir cuenta bancaria</button>
+      </div>
+
+      <div class="card">
+        <div class="wallet-section-header">
+          <div class="section-title">Inversiones</div>
+          <div class="total" id="investments-total">0,00 €</div>
+        </div>
+        <div id="investments-list" style="margin-top:6px"></div>
+        <button class="add-link" id="add-investment-btn">+ Añadir inversión</button>
+      </div>
+    </section>
+
     <!-- SETTINGS -->
     <section class="view" id="view-settings">
       <div class="card">
@@ -145,10 +186,13 @@
       <span class="nav-icon">📊</span><span>Resumen</span>
     </button>
     <button data-view="list">
-      <span class="nav-icon">📒</span><span>Movimientos</span>
+      <span class="nav-icon">📒</span><span>Movs.</span>
     </button>
     <button data-view="add">
       <span class="nav-icon">➕</span><span>Añadir</span>
+    </button>
+    <button data-view="wallet">
+      <span class="nav-icon">💼</span><span>Cartera</span>
     </button>
     <button data-view="settings">
       <span class="nav-icon">⚙️</span><span>Ajustes</span>
@@ -173,6 +217,60 @@
       <button class="btn-primary" id="cat-save-btn">Guardar</button>
       <button class="btn-secondary" id="cat-cancel-btn" style="margin-top:8px">Cancelar</button>
       <button class="btn-secondary btn-danger" id="cat-delete-btn" style="margin-top:8px" hidden>Eliminar categoría</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="cash-modal" hidden>
+    <div class="modal-sheet">
+      <h2>Efectivo</h2>
+      <div class="field">
+        <label for="cash-input">Cantidad en efectivo</label>
+        <input type="number" id="cash-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="cash-save-btn">Guardar</button>
+      <button class="btn-secondary" id="cash-cancel-btn" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="bank-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="bank-modal-title">Cuenta bancaria</h2>
+      <div class="field">
+        <label for="bank-name-input">Banco</label>
+        <input type="text" id="bank-name-input" placeholder="Ej. BBVA" />
+      </div>
+      <div class="field">
+        <label for="bank-balance-input">Saldo</label>
+        <input type="number" id="bank-balance-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="bank-save-btn">Guardar</button>
+      <button class="btn-secondary" id="bank-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="bank-delete-btn" style="margin-top:8px" hidden>Eliminar cuenta</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="investment-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="investment-modal-title">Inversión</h2>
+      <div class="field">
+        <label for="inv-name-input">Nombre del fondo</label>
+        <input type="text" id="inv-name-input" placeholder="Ej. MSCI World" />
+      </div>
+      <div class="field">
+        <label for="inv-bank-input">Banco / broker</label>
+        <input type="text" id="inv-bank-input" placeholder="Ej. MyInvestor" />
+      </div>
+      <div class="field">
+        <label for="inv-invested-input">Cantidad invertida</label>
+        <input type="number" id="inv-invested-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <div class="field">
+        <label for="inv-current-input">Valor actual</label>
+        <input type="number" id="inv-current-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="inv-save-btn">Guardar</button>
+      <button class="btn-secondary" id="inv-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="inv-delete-btn" style="margin-top:8px" hidden>Eliminar inversión</button>
     </div>
   </div>
 
