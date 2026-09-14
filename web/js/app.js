@@ -13,7 +13,17 @@ import {
   WATCHLIST_STATUSES,
   GOAL_KINDS,
 } from "./store/index.js";
-import { drawDonut, drawBars } from "./charts.js";
+import { drawDonut, drawBars, drawLine } from "./charts.js";
+
+const INVESTMENT_TYPE_COLORS = {
+  etf: "#4f6f8f",
+  fondo: "#3f8f86",
+  accion: "#a1527a",
+  liquidez: "#4fb3c4",
+  otro: "#6b6759",
+};
+const LIQUIDITY_COLOR = "#4fb3c4";
+const INVESTMENTS_COLOR = "#b98b3d";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -38,6 +48,12 @@ const state = {
   editingIdeaId: null,
   watchlistStatusFilter: "all",
   createInvestmentThenOperation: false,
+  walletTab: "general",
+  portfolioHorizon: "all",
+  editingDebtId: null,
+  listRangeFilter: "all",
+  listAccountFilter: "all",
+  listSort: "date-desc",
 };
 
 // ---------- Navigation ----------
@@ -48,8 +64,8 @@ const titles = {
   wallet: "Cartera",
   "investment-detail": "Inversión",
   settings: "Ajustes",
-  watchlist: "Seguimiento",
-  ideas: "Ideas de inversión",
+  accounts: "Cuentas",
+  debts: "Deudas",
 };
 
 function setView(view) {
@@ -60,11 +76,11 @@ function setView(view) {
   $$(".bottom-nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   if (view === "dashboard") renderDashboard();
   if (view === "list") renderList();
-  if (view === "wallet") renderWallet();
+  if (view === "wallet") renderWalletTab(state.walletTab);
   if (view === "investment-detail") renderInvestmentDetail();
   if (view === "settings") renderSettings();
-  if (view === "watchlist") renderWatchlist();
-  if (view === "ideas") renderIdeas();
+  if (view === "accounts") renderAccountsView();
+  if (view === "debts") renderDebtsView();
 }
 
 $$(".bottom-nav button").forEach((btn) => {
@@ -93,26 +109,77 @@ $$("#period-toggle button").forEach((btn) => {
 });
 
 function renderDashboard() {
-  $$("#period-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.period === state.dashPeriod));
+  Store.recordNetWorthSnapshot();
 
   const settings = Store.getSettings();
   const currency = settings.currency;
-  const movements = Store.getMovements();
 
+  // ---- Patrimonio neto ----
+  const nw = Store.computeNetWorth();
+  $("#net-worth-amount").textContent = formatMoney(nw.total, currency);
+  $("#nw-assets").textContent = formatMoney(nw.liquidity + nw.investments, currency);
+  $("#nw-debts").textContent = formatMoney(nw.debts, currency);
+  $("#nw-liquidity").textContent = formatMoney(nw.liquidity, currency);
+
+  const nwChange = Store.netWorthChangeSince(30);
+  const nwChangeEl = $("#net-worth-change");
+  if (nwChange) {
+    const sign = nwChange.diff > 0 ? "+" : "";
+    nwChangeEl.textContent = `${sign}${formatMoney(nwChange.diff, currency)} (${formatPercent(nwChange.pct)}) últimos 30 días`;
+    nwChangeEl.className = "wallet-total-sub " + (nwChange.diff >= 0 ? "up" : "down");
+  } else {
+    nwChangeEl.textContent = "Todavía no hay suficiente histórico";
+    nwChangeEl.className = "wallet-total-sub";
+  }
+
+  // ---- Evolución patrimonial ----
+  const history = Store.getNetWorthHistory();
+  const points = history.map((h) => ({
+    date: h.date,
+    value: h.total,
+    dateLabel: new Date(h.date + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
+  }));
+  drawLine($("#networth-chart"), points, { lineColor: "#c9a24a", fillColor: "rgba(201,162,74,0.15)", labelColor: "#94918c" });
+
+  // ---- Distribución del patrimonio ----
+  const wealthSlices = [];
+  if (nw.liquidity > 0) wealthSlices.push({ value: nw.liquidity, color: LIQUIDITY_COLOR, name: "Liquidez", icon: "💧" });
+  if (nw.investments > 0) wealthSlices.push({ value: nw.investments, color: INVESTMENTS_COLOR, name: "Inversiones", icon: "📈" });
+  drawDonut($("#wealth-donut"), wealthSlices, { emptyColor: "rgba(154,151,140,0.18)" });
+  const wealthLegend = $("#wealth-legend");
+  wealthLegend.innerHTML = "";
+  if (!wealthSlices.length) {
+    wealthLegend.innerHTML = '<div class="empty-state" style="padding:8px 0">Añade cuentas o inversiones para ver la distribución.</div>';
+  } else {
+    wealthSlices.forEach((s) => {
+      const row = document.createElement("div");
+      row.className = "cat-legend-item";
+      row.innerHTML = `<span class="dot" style="background:${s.color}"></span><span class="name">${s.icon} ${s.name}</span><span class="value">${formatMoney(s.value, currency)}</span>`;
+      wealthLegend.appendChild(row);
+    });
+  }
+
+  // ---- Ingresos / gastos / ahorro del periodo ----
+  $$("#period-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.period === state.dashPeriod));
+
+  const movements = Store.getMovements();
   const range = rangeForPeriod(state.dashPeriod);
   const periodMovs = movements.filter((m) => inRange(m.date, range));
   const label = periodLabel(state.dashPeriod);
-  $("#dash-period-label").textContent = `Balance ${label}`;
+  $("#dash-period-label").textContent = `Ahorro ${label}`;
   $("#dash-cat-title").textContent = `Por categoría ${label}`;
 
   const income = periodMovs.filter((m) => m.type === "income").reduce((s, m) => s + m.amount, 0);
   const expense = periodMovs.filter((m) => m.type === "expense").reduce((s, m) => s + m.amount, 0);
   const balance = income - expense;
+  const savingsRate = income > 0 ? (balance / income) * 100 : 0;
 
   $("#dash-balance").textContent = formatMoney(balance, currency);
   $("#dash-balance").classList.toggle("negative", balance < 0);
   $("#dash-income").textContent = formatMoney(income, currency);
   $("#dash-expense").textContent = formatMoney(expense, currency);
+  $("#dash-savings-rate").textContent = formatPercent(savingsRate);
+  $("#dash-savings-rate").className = "stat-value " + (savingsRate >= 0 ? "income" : "expense");
 
   const byCat = new Map();
   periodMovs.filter((m) => m.type === "expense").forEach((m) => {
@@ -256,14 +323,17 @@ $("#goal-delete-btn").addEventListener("click", () => {
 // ---------- Movement row ----------
 function movementRow(m, currency) {
   const cat = Store.getCategory(m.categoryId);
+  const account = m.accountId ? Store.getAccount(m.accountId) : null;
   const row = document.createElement("div");
   row.className = "movement-row";
   const color = cat ? cat.color : "#8a94a6";
+  const metaParts = [formatDate(m.date), cat ? cat.name : "Sin categoría"];
+  if (account) metaParts.push(account.name);
   row.innerHTML = `
     <div class="icon" style="background:${color}22;color:${color}">${cat ? cat.icon : "❔"}</div>
     <div class="info">
       <div class="concept">${escapeHtml(m.concept || (cat ? cat.name : "Sin categoría"))}</div>
-      <div class="meta">${formatDate(m.date)} · ${cat ? escapeHtml(cat.name) : "Sin categoría"}</div>
+      <div class="meta">${metaParts.map(escapeHtml).join(" · ")}</div>
     </div>
     <div class="amount ${m.type}">${m.type === "income" ? "+" : "−"}${formatMoney(m.amount, currency)}</div>
     <button class="del-btn" title="Eliminar">✕</button>
@@ -317,14 +387,68 @@ function renderCatFilters() {
   });
 }
 
+function renderAccountFilters() {
+  const wrap = $("#account-filters");
+  wrap.innerHTML = "";
+  const accounts = Store.getAccounts();
+  if (!accounts.length) return;
+  const allChip = document.createElement("button");
+  allChip.className = "chip" + (state.listAccountFilter === "all" ? " active" : "");
+  allChip.textContent = "Todas las cuentas";
+  allChip.addEventListener("click", () => {
+    state.listAccountFilter = "all";
+    renderList();
+  });
+  wrap.appendChild(allChip);
+  accounts.forEach((a) => {
+    const chip = document.createElement("button");
+    chip.className = "chip" + (state.listAccountFilter === a.id ? " active" : "");
+    chip.textContent = a.name;
+    chip.addEventListener("click", () => {
+      state.listAccountFilter = a.id;
+      renderList();
+    });
+    wrap.appendChild(chip);
+  });
+  const noneChip = document.createElement("button");
+  noneChip.className = "chip" + (state.listAccountFilter === "none" ? " active" : "");
+  noneChip.textContent = "Sin cuenta";
+  noneChip.addEventListener("click", () => {
+    state.listAccountFilter = "none";
+    renderList();
+  });
+  wrap.appendChild(noneChip);
+}
+
+$$("#period-filters .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    state.listRangeFilter = chip.dataset.range;
+    renderList();
+  });
+});
+
+$("#sort-select").addEventListener("change", (e) => {
+  state.listSort = e.target.value;
+  renderList();
+});
+
 function renderList() {
   const currency = Store.getSettings().currency;
   renderCatFilters();
+  renderAccountFilters();
   $$("#type-filters .chip").forEach((c) => c.classList.toggle("active", c.dataset.type === state.listTypeFilter));
+  $$("#period-filters .chip").forEach((c) => c.classList.toggle("active", c.dataset.range === state.listRangeFilter));
+  $("#sort-select").value = state.listSort;
 
   let movements = Store.getMovements();
   if (state.listTypeFilter !== "all") movements = movements.filter((m) => m.type === state.listTypeFilter);
   if (state.listCatFilter !== "all") movements = movements.filter((m) => m.categoryId === state.listCatFilter);
+  if (state.listAccountFilter === "none") movements = movements.filter((m) => !m.accountId);
+  else if (state.listAccountFilter !== "all") movements = movements.filter((m) => m.accountId === state.listAccountFilter);
+  if (state.listRangeFilter !== "all") {
+    const range = rangeForPeriod(state.listRangeFilter);
+    movements = movements.filter((m) => inRange(m.date, range));
+  }
   if (state.searchQuery.trim()) {
     const q = state.searchQuery.trim().toLowerCase();
     movements = movements.filter((m) => {
@@ -333,10 +457,20 @@ function renderList() {
     });
   }
 
+  if (state.listSort === "date-asc") movements = movements.slice().reverse();
+  else if (state.listSort === "amount-desc") movements = movements.slice().sort((a, b) => b.amount - a.amount);
+  else if (state.listSort === "amount-asc") movements = movements.slice().sort((a, b) => a.amount - b.amount);
+
   const container = $("#movements-list");
   container.innerHTML = "";
   if (!movements.length) {
     container.innerHTML = '<div class="empty-state">No hay movimientos con estos filtros.</div>';
+    return;
+  }
+
+  const groupByMonth = state.listSort === "date-desc" || state.listSort === "date-asc";
+  if (!groupByMonth) {
+    movements.forEach((m) => container.appendChild(movementRow(m, currency)));
     return;
   }
 
@@ -347,20 +481,19 @@ function renderList() {
     groups.get(key).push(m);
   });
 
-  Array.from(groups.keys())
-    .sort((a, b) => b.localeCompare(a))
-    .forEach((key) => {
-      const items = groups.get(key);
-      const balance = items.reduce((s, m) => s + (m.type === "income" ? m.amount : -m.amount), 0);
-      const group = document.createElement("div");
-      group.className = "month-group";
-      const header = document.createElement("div");
-      header.className = "month-header";
-      header.innerHTML = `<span>${monthLabel(key)}</span><span class="balance">${formatMoney(balance, currency)}</span>`;
-      group.appendChild(header);
-      items.forEach((m) => group.appendChild(movementRow(m, currency)));
-      container.appendChild(group);
-    });
+  const keys = Array.from(groups.keys()).sort((a, b) => (state.listSort === "date-asc" ? a.localeCompare(b) : b.localeCompare(a)));
+  keys.forEach((key) => {
+    const items = groups.get(key);
+    const balance = items.reduce((s, m) => s + (m.type === "income" ? m.amount : -m.amount), 0);
+    const group = document.createElement("div");
+    group.className = "month-group";
+    const header = document.createElement("div");
+    header.className = "month-header";
+    header.innerHTML = `<span>${monthLabel(key)}</span><span class="balance">${formatMoney(balance, currency)}</span>`;
+    group.appendChild(header);
+    items.forEach((m) => group.appendChild(movementRow(m, currency)));
+    container.appendChild(group);
+  });
 }
 
 $("#search-input").addEventListener("input", (e) => {
@@ -550,56 +683,134 @@ $("#cat-delete-btn").addEventListener("click", () => {
   }
 });
 
-$("#open-watchlist-btn").addEventListener("click", () => setView("watchlist"));
-$("#open-ideas-btn").addEventListener("click", () => setView("ideas"));
+$("#open-accounts-btn").addEventListener("click", () => setView("accounts"));
+$("#open-debts-btn").addEventListener("click", () => setView("debts"));
 
 // ---------- Wallet (Cartera) ----------
 function accountTypeLabel(type) {
   return type === "bank" ? "Banco" : "Efectivo";
 }
 
-function renderWallet() {
+$$("#wallet-tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.walletTab = btn.dataset.tab;
+    renderWalletTab(state.walletTab);
+  });
+});
+
+function renderWalletTab(tab) {
+  $$("#wallet-tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  $$(".wallet-panel").forEach((p) => p.classList.toggle("active", p.id === `wallet-panel-${tab}`));
+  if (tab === "general") renderPortfolioGeneral();
+  if (tab === "assets") renderInvestmentsList();
+  if (tab === "watchlist") renderWatchlist();
+  if (tab === "ideas") renderIdeas();
+}
+
+const HORIZONS = [
+  { id: "1m", label: "1M", days: 30 },
+  { id: "3m", label: "3M", days: 90 },
+  { id: "6m", label: "6M", days: 182 },
+  { id: "1y", label: "1A", days: 365 },
+  { id: "3y", label: "3A", days: 365 * 3 },
+  { id: "5y", label: "5A", days: 365 * 5 },
+  { id: "all", label: "Todo", days: null },
+];
+
+function renderPortfolioGeneral() {
   const currency = Store.getSettings().currency;
-  const { liquidity, investments: investmentsTotal, total } = Store.computeNetWorth();
+  const investments = Store.getInvestments();
+  const computed = investments.map((inv) => Store.computeInvestment(inv));
+  const aportado = computed.reduce((s, c) => s + c.aportado, 0);
+  const valorActual = computed.reduce((s, c) => s + c.valorActual, 0);
+  const ganancia = computed.reduce((s, c) => s + c.ganancia, 0);
+  const rentabilidad = aportado > 0 ? (ganancia / aportado) * 100 : 0;
 
-  $("#wallet-total").textContent = formatMoney(total, currency);
-  $("#wallet-liquidity").textContent = formatMoney(liquidity, currency);
-  $("#wallet-investments-value").textContent = formatMoney(investmentsTotal, currency);
-  $("#accounts-total").textContent = formatMoney(liquidity, currency);
-  $("#investments-total").textContent = formatMoney(investmentsTotal, currency);
+  $("#portfolio-value").textContent = formatMoney(valorActual, currency);
+  $("#portfolio-return").textContent = `${formatPercent(rentabilidad)} rentabilidad total`;
+  $("#portfolio-return").className = "wallet-total-sub " + (ganancia >= 0 ? "up" : "down");
+  $("#portfolio-invested").textContent = formatMoney(aportado, currency);
+  $("#portfolio-gain").textContent = formatMoney(ganancia, currency);
+  $("#portfolio-gain").className = "stat-value " + (ganancia > 0 ? "income" : ganancia < 0 ? "expense" : "");
 
-  const change = Store.netWorthChangeSince(30);
-  const changeEl = $("#wallet-total-change");
-  if (change) {
-    const sign = change.diff > 0 ? "+" : "";
-    changeEl.textContent = `${sign}${formatMoney(change.diff, currency)} (${formatPercent(change.pct)}) últimos 30 días`;
-    changeEl.className = "wallet-total-sub " + (change.diff >= 0 ? "up" : "down");
-  } else {
-    changeEl.textContent = "";
+  const history = Store.getNetWorthHistory();
+  const earliestDate = history.length ? history[0].date : null;
+  const daysAvailable = earliestDate ? Math.floor((Date.now() - new Date(earliestDate + "T00:00:00").getTime()) / 86400000) : 0;
+
+  const horizonWrap = $("#horizon-toggle");
+  horizonWrap.innerHTML = "";
+  HORIZONS.forEach((h) => {
+    const btn = document.createElement("button");
+    btn.className = "chip" + (state.portfolioHorizon === h.id ? " active" : "");
+    btn.textContent = h.label;
+    const disabled = h.days !== null && daysAvailable < h.days && h.id !== "1m";
+    if (disabled) {
+      btn.disabled = true;
+      btn.style.opacity = "0.4";
+    } else {
+      btn.addEventListener("click", () => {
+        state.portfolioHorizon = h.id;
+        renderPortfolioGeneral();
+      });
+    }
+    horizonWrap.appendChild(btn);
+  });
+
+  const horizon = HORIZONS.find((h) => h.id === state.portfolioHorizon) || HORIZONS[HORIZONS.length - 1];
+  let filteredHistory = history;
+  if (horizon.days !== null) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - horizon.days);
+    const cutoffISO = cutoff.toISOString().slice(0, 10);
+    filteredHistory = history.filter((h) => h.date >= cutoffISO);
   }
+  const points = filteredHistory.map((h) => ({
+    date: h.date,
+    value: h.investments,
+    dateLabel: new Date(h.date + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "short" }),
+  }));
+  drawLine($("#portfolio-chart"), points, { lineColor: "#c9a24a", fillColor: "rgba(201,162,74,0.15)", labelColor: "#94918c" });
 
-  const accounts = Store.getAccounts();
-  const accountsList = $("#accounts-list");
-  accountsList.innerHTML = "";
-  if (!accounts.length) {
-    accountsList.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin cuentas todavía.</div>';
+  const byType = new Map();
+  computed.forEach((c, i) => {
+    const type = investments[i].type || "otro";
+    byType.set(type, (byType.get(type) || 0) + c.valorActual);
+  });
+  const liquidity = Store.getTotalLiquidity();
+  if (liquidity > 0) byType.set("liquidez", (byType.get("liquidez") || 0) + liquidity);
+
+  const distSlices = Array.from(byType.entries())
+    .filter(([, value]) => value > 0)
+    .map(([type, value]) => ({
+      value,
+      color: INVESTMENT_TYPE_COLORS[type] || "#6b6759",
+      name: type === "liquidez" ? "Liquidez" : (INVESTMENT_TYPES.find((t) => t.id === type)?.label || type),
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  drawDonut($("#portfolio-donut"), distSlices, { emptyColor: "rgba(154,151,140,0.18)" });
+  const portfolioLegend = $("#portfolio-legend");
+  portfolioLegend.innerHTML = "";
+  const distTotal = distSlices.reduce((s, x) => s + x.value, 0);
+  if (!distSlices.length) {
+    portfolioLegend.innerHTML = '<div class="empty-state" style="padding:8px 0">Sin datos todavía.</div>';
   } else {
-    accounts.forEach((a) => {
-      const balance = Store.getAccountBalance(a.id);
+    distSlices.forEach((s) => {
+      const pct = distTotal ? (s.value / distTotal) * 100 : 0;
       const row = document.createElement("div");
-      row.className = "wallet-item-row";
-      row.innerHTML = `
-        <div><div class="wi-name">${escapeHtml(a.name)}</div><div class="wi-sub">${accountTypeLabel(a.type)}</div></div>
-        <div><div class="wi-value">${formatMoney(balance, currency)}</div></div>
-      `;
-      row.addEventListener("click", () => openAccountModal(a.id));
-      accountsList.appendChild(row);
+      row.className = "cat-legend-item";
+      row.innerHTML = `<span class="dot" style="background:${s.color}"></span><span class="name">${s.name}</span><span class="value">${formatMoney(s.value, currency)} · ${pct.toFixed(0)}%</span>`;
+      portfolioLegend.appendChild(row);
     });
   }
+}
 
+function renderInvestmentsList() {
+  const currency = Store.getSettings().currency;
   const investments = Store.getInvestments();
   const invList = $("#investments-list");
   invList.innerHTML = "";
+  $("#investments-total").textContent = formatMoney(Store.getTotalInvestmentsValue(), currency);
   if (!investments.length) {
     invList.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin inversiones todavía.</div>';
   } else {
@@ -626,6 +837,97 @@ function renderWallet() {
     });
   }
 }
+
+// ---- Cuentas (Ajustes → Cuentas) ----
+function renderAccountsView() {
+  const currency = Store.getSettings().currency;
+  $("#accounts-total").textContent = formatMoney(Store.getTotalLiquidity(), currency);
+  const accounts = Store.getAccounts();
+  const accountsList = $("#accounts-list");
+  accountsList.innerHTML = "";
+  if (!accounts.length) {
+    accountsList.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin cuentas todavía.</div>';
+  } else {
+    accounts.forEach((a) => {
+      const balance = Store.getAccountBalance(a.id);
+      const row = document.createElement("div");
+      row.className = "wallet-item-row";
+      row.innerHTML = `
+        <div><div class="wi-name">${escapeHtml(a.name)}</div><div class="wi-sub">${accountTypeLabel(a.type)}</div></div>
+        <div><div class="wi-value">${formatMoney(balance, currency)}</div></div>
+      `;
+      row.addEventListener("click", () => openAccountModal(a.id));
+      accountsList.appendChild(row);
+    });
+  }
+}
+
+// ---- Deudas (Ajustes → Deudas) ----
+function renderDebtsView() {
+  const currency = Store.getSettings().currency;
+  $("#debts-total").textContent = formatMoney(Store.getTotalDebts(), currency);
+  const debts = Store.getDebts();
+  const list = $("#debts-list");
+  list.innerHTML = "";
+  if (!debts.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin deudas registradas.</div>';
+  } else {
+    debts.forEach((d) => {
+      const row = document.createElement("div");
+      row.className = "wallet-item-row";
+      row.innerHTML = `
+        <div><div class="wi-name">${escapeHtml(d.name)}</div></div>
+        <div><div class="wi-value expense">${formatMoney(d.amount, currency)}</div></div>
+      `;
+      row.addEventListener("click", () => openDebtModal(d.id));
+      list.appendChild(row);
+    });
+  }
+}
+$("#add-debt-btn").addEventListener("click", () => openDebtModal(null));
+function openDebtModal(debtId) {
+  state.editingDebtId = debtId;
+  if (debtId) {
+    const d = Store.getDebt(debtId);
+    $("#debt-modal-title").textContent = "Editar deuda";
+    $("#debt-name-input").value = d.name;
+    $("#debt-amount-input").value = d.amount;
+    $("#debt-delete-btn").hidden = false;
+  } else {
+    $("#debt-modal-title").textContent = "Nueva deuda";
+    $("#debt-name-input").value = "";
+    $("#debt-amount-input").value = "";
+    $("#debt-delete-btn").hidden = true;
+  }
+  $("#debt-modal").hidden = false;
+}
+$("#debt-cancel-btn").addEventListener("click", () => ($("#debt-modal").hidden = true));
+$("#debt-save-btn").addEventListener("click", () => {
+  const name = $("#debt-name-input").value.trim();
+  if (!name) {
+    showToast("Ponle un nombre a la deuda");
+    return;
+  }
+  const amount = parseFloat($("#debt-amount-input").value) || 0;
+  if (state.editingDebtId) {
+    Store.updateDebt(state.editingDebtId, { name, amount });
+  } else {
+    Store.addDebt({ name, amount });
+  }
+  Store.recordNetWorthSnapshot();
+  $("#debt-modal").hidden = true;
+  renderDebtsView();
+  showToast("Deuda guardada");
+});
+$("#debt-delete-btn").addEventListener("click", () => {
+  if (state.editingDebtId && confirm("¿Eliminar esta deuda?")) {
+    Store.deleteDebt(state.editingDebtId);
+    Store.recordNetWorthSnapshot();
+    $("#debt-modal").hidden = true;
+    renderDebtsView();
+    showToast("Deuda eliminada");
+  }
+});
 
 // ---- Cuentas ----
 function openAccountModal(accountId) {
@@ -667,7 +969,7 @@ $("#account-save-btn").addEventListener("click", () => {
   }
   Store.recordNetWorthSnapshot();
   $("#account-modal").hidden = true;
-  renderWallet();
+  renderAccountsView();
   showToast("Cuenta guardada");
 });
 $("#account-delete-btn").addEventListener("click", () => {
@@ -675,7 +977,7 @@ $("#account-delete-btn").addEventListener("click", () => {
     Store.deleteAccount(state.editingAccountId);
     Store.recordNetWorthSnapshot();
     $("#account-modal").hidden = true;
-    renderWallet();
+    renderAccountsView();
     showToast("Cuenta eliminada");
   }
 });
@@ -694,7 +996,7 @@ $("#adjust-save-btn").addEventListener("click", () => {
   Store.adjustAccountBalance(state.editingAccountId, target);
   Store.recordNetWorthSnapshot();
   $("#adjust-modal").hidden = true;
-  renderWallet();
+  renderAccountsView();
   showToast("Saldo ajustado");
 });
 
@@ -784,7 +1086,7 @@ $("#inv-save-btn").addEventListener("click", () => {
   if (state.editingInvestmentId) {
     Store.updateInvestment(state.editingInvestmentId, payload);
     showToast("Inversión actualizada");
-    renderWallet();
+    if (state.view === "wallet") renderWalletTab(state.walletTab);
     if (state.view === "investment-detail") renderInvestmentDetail();
   } else {
     const inv = Store.addInvestment(payload);
@@ -792,8 +1094,8 @@ $("#inv-save-btn").addEventListener("click", () => {
     if (state.createInvestmentThenOperation) {
       state.createInvestmentThenOperation = false;
       openOperationModal(inv.id, null);
-    } else {
-      renderWallet();
+    } else if (state.view === "wallet") {
+      renderWalletTab(state.walletTab);
     }
   }
 });
@@ -802,6 +1104,7 @@ $("#inv-delete-btn").addEventListener("click", () => {
     Store.deleteInvestment(state.editingInvestmentId);
     Store.recordNetWorthSnapshot();
     $("#investment-modal").hidden = true;
+    state.walletTab = "assets";
     setView("wallet");
     showToast("Inversión eliminada");
   }
@@ -811,6 +1114,7 @@ $("#inv-delete-btn").addEventListener("click", () => {
 function renderInvestmentDetail() {
   const inv = Store.getInvestment(state.currentInvestmentId);
   if (!inv) {
+    state.walletTab = "assets";
     setView("wallet");
     return;
   }

@@ -443,6 +443,9 @@ input[type="text"], input[type="number"], input[type="date"], select {
 .goal-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; }
 .goal-card { cursor: pointer; }
 
+.wallet-panel { display: none; flex-direction: column; gap: 16px; }
+.wallet-panel.active { display: flex; }
+
 .action-sheet-btn { text-align: left; margin-bottom: 8px; }
 .action-sheet-btn:last-of-type { margin-bottom: 0; }
 

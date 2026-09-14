@@ -7,6 +7,7 @@ import * as Investments from "./investments.js";
 import * as Watchlist from "./watchlist.js";
 import * as Ideas from "./ideas.js";
 import * as Goals from "./goals.js";
+import * as Debts from "./debts.js";
 import * as NetWorth from "./networth.js";
 
 export const Store = {
@@ -86,6 +87,14 @@ export const Store = {
   updateGoal: Goals.updateGoal,
   deleteGoal: Goals.deleteGoal,
   computeGoalProgress: Goals.computeGoalProgress,
+
+  // Deudas
+  getDebts: Debts.getDebts,
+  getDebt: Debts.getDebt,
+  addDebt: Debts.addDebt,
+  updateDebt: Debts.updateDebt,
+  deleteDebt: Debts.deleteDebt,
+  getTotalDebts: Debts.getTotalDebts,
 
   // Patrimonio
   computeNetWorth: NetWorth.computeNetWorth,

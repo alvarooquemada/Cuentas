@@ -2,11 +2,13 @@ import { getState, persist } from "./state.js";
 import { round2, todayISO } from "./utils.js";
 import { getTotalLiquidity } from "./accounts.js";
 import { getTotalInvestmentsValue } from "./investments.js";
+import { getTotalDebts } from "./debts.js";
 
 export function computeNetWorth() {
   const liquidity = getTotalLiquidity();
   const investments = getTotalInvestmentsValue();
-  return { liquidity, investments, total: round2(liquidity + investments) };
+  const debts = getTotalDebts();
+  return { liquidity, investments, debts, total: round2(liquidity + investments - debts) };
 }
 
 export function getNetWorthHistory() {
@@ -18,11 +20,11 @@ export function getNetWorthHistory() {
 // inversión). Un punto por día: si ya se guardó hoy, se sustituye por el
 // valor actual en vez de acumular duplicados.
 export function recordNetWorthSnapshot() {
-  const { liquidity, investments, total } = computeNetWorth();
+  const { liquidity, investments, debts, total } = computeNetWorth();
   const state = getState();
   const today = todayISO();
   const idx = state.netWorthSnapshots.findIndex((s) => s.date === today);
-  const point = { date: today, total, liquidity, investments };
+  const point = { date: today, total, liquidity, investments, debts };
   if (idx >= 0) state.netWorthSnapshots[idx] = point;
   else state.netWorthSnapshots.push(point);
   persist();

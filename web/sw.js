@@ -1,4 +1,4 @@
-const CACHE_NAME = "cuentas-cache-v2";
+const CACHE_NAME = "cuentas-cache-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,7 @@ const ASSETS = [
   "./js/charts.js",
   "./js/store/index.js",
   "./js/store/state.js",
+  "./js/store/debts.js",
   "./js/store/utils.js",
   "./js/store/categories.js",
   "./js/store/movements.js",
