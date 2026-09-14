@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <title>Cuentas</title>
   <meta name="description" content="Control de gastos e ingresos" />
-  <meta name="theme-color" content="#17181b" />
+  <meta name="theme-color" content="#121316" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cuentas" />
@@ -26,6 +26,8 @@
       <div class="segmented" id="period-toggle">
         <button type="button" class="active" data-period="week">Semana</button>
         <button type="button" data-period="month">Mes</button>
+        <button type="button" data-period="quarter">Trim.</button>
+        <button type="button" data-period="year">Año</button>
       </div>
 
       <div class="hero-balance">
@@ -58,6 +60,12 @@
 
       <div class="section-title">Últimos movimientos</div>
       <div id="dash-recent" style="display:flex;flex-direction:column;gap:8px"></div>
+
+      <div class="wallet-section-header">
+        <div class="section-title">Objetivos</div>
+        <button class="add-link" id="add-goal-btn">+ Nuevo</button>
+      </div>
+      <div id="goals-list" style="display:flex;flex-direction:column;gap:10px"></div>
     </section>
 
     <!-- MOVEMENTS LIST -->
@@ -97,6 +105,13 @@
       </div>
 
       <div class="field">
+        <label for="account-select">Cuenta (opcional)</label>
+        <select id="account-select">
+          <option value="">Sin cuenta</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label for="date-input">Fecha</label>
         <input type="date" id="date-input" />
         <div class="filters" style="margin-top:6px">
@@ -114,25 +129,27 @@
       <div class="wallet-total">
         <div class="label">Patrimonio total</div>
         <div class="amount" id="wallet-total">0,00 €</div>
+        <div class="wallet-total-sub" id="wallet-total-change"></div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Liquidez</div>
+          <div class="stat-value" id="wallet-liquidity">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Inversiones</div>
+          <div class="stat-value" id="wallet-investments-value">0,00 €</div>
+        </div>
       </div>
 
       <div class="card">
         <div class="wallet-section-header">
-          <div class="section-title">Efectivo</div>
+          <div class="section-title">Cuentas</div>
+          <div class="total" id="accounts-total">0,00 €</div>
         </div>
-        <div class="cash-row" style="margin-top:10px">
-          <div class="cash-amount" id="cash-amount">0,00 €</div>
-          <button type="button" id="edit-cash-btn">Editar</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="wallet-section-header">
-          <div class="section-title">Bancos</div>
-          <div class="total" id="banks-total">0,00 €</div>
-        </div>
-        <div id="banks-list" style="margin-top:6px"></div>
-        <button class="add-link" id="add-bank-btn">+ Añadir cuenta bancaria</button>
+        <div id="accounts-list" style="margin-top:6px"></div>
+        <button class="add-link" id="add-account-btn">+ Añadir cuenta</button>
       </div>
 
       <div class="card">
@@ -145,12 +162,64 @@
       </div>
     </section>
 
+    <!-- INVESTMENT DETAIL -->
+    <section class="view" id="view-investment-detail">
+      <div class="card">
+        <div class="wallet-section-header">
+          <div>
+            <div id="inv-detail-name" style="font-weight:800;font-size:18px"></div>
+            <div id="inv-detail-sub" class="wi-sub"></div>
+          </div>
+          <button class="add-link" id="inv-detail-edit-btn">Editar</button>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Aportado</div>
+          <div class="stat-value" id="inv-detail-invested">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Valor actual</div>
+          <div class="stat-value" id="inv-detail-value">0,00 €</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Ganancia</div>
+          <div class="stat-value" id="inv-detail-gain">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Rentabilidad</div>
+          <div class="stat-value" id="inv-detail-return">0,0%</div>
+        </div>
+      </div>
+
+      <div class="wallet-section-header">
+        <div class="section-title">Operaciones</div>
+        <button class="add-link" id="inv-detail-add-op-btn">+ Añadir</button>
+      </div>
+      <div id="inv-detail-ops-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </section>
+
     <!-- SETTINGS -->
     <section class="view" id="view-settings">
       <div class="card">
         <div class="section-title" style="margin-bottom:6px">Categorías</div>
         <div id="category-manage-list"></div>
         <button class="btn-secondary" id="add-category-btn" style="margin-top:10px">+ Añadir categoría</button>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:6px">Inversión</div>
+        <div class="settings-row" id="open-watchlist-btn" style="cursor:pointer">
+          <span>Seguimiento de fondos/ETFs</span>
+          <span>›</span>
+        </div>
+        <div class="settings-row" id="open-ideas-btn" style="cursor:pointer">
+          <span>Ideas de inversión</span>
+          <span>›</span>
+        </div>
       </div>
 
       <div class="card">
@@ -178,6 +247,19 @@
         <input type="file" id="import-file" accept="application/json" hidden />
         <button class="btn-secondary btn-danger" id="reset-btn" style="margin-top:8px">Borrar todos los datos</button>
       </div>
+    </section>
+
+    <!-- WATCHLIST (Seguimiento) -->
+    <section class="view" id="view-watchlist">
+      <div class="filters" id="watchlist-status-filters"></div>
+      <div id="watchlist-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="btn-primary" id="add-watchlist-btn">+ Añadir a seguimiento</button>
+    </section>
+
+    <!-- IDEAS -->
+    <section class="view" id="view-ideas">
+      <div id="ideas-list" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="btn-primary" id="add-idea-btn">+ Nueva idea</button>
     </section>
   </div>
 
@@ -220,57 +302,286 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="cash-modal" hidden>
+  <!-- Hoja de acciones del botón + -->
+  <div class="modal-overlay" id="action-sheet-modal" hidden>
     <div class="modal-sheet">
-      <h2>Efectivo</h2>
-      <div class="field">
-        <label for="cash-input">Cantidad en efectivo</label>
-        <input type="number" id="cash-input" inputmode="decimal" step="0.01" placeholder="0,00" />
-      </div>
-      <button class="btn-primary" id="cash-save-btn">Guardar</button>
-      <button class="btn-secondary" id="cash-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <h2>Añadir</h2>
+      <button class="btn-secondary action-sheet-btn" id="action-add-expense">💸 Añadir gasto</button>
+      <button class="btn-secondary action-sheet-btn" id="action-add-income">💰 Añadir ingreso</button>
+      <button class="btn-secondary action-sheet-btn" id="action-add-investment">📈 Añadir inversión</button>
+      <button class="btn-secondary action-sheet-btn" id="action-add-operation">🧾 Registrar operación</button>
+      <button class="btn-secondary action-sheet-btn" id="action-add-transfer">🔁 Transferencia</button>
+      <button class="btn-secondary" id="action-sheet-cancel" style="margin-top:8px">Cancelar</button>
     </div>
   </div>
 
-  <div class="modal-overlay" id="bank-modal" hidden>
+  <!-- Elegir inversión para registrar una operación -->
+  <div class="modal-overlay" id="pick-investment-modal" hidden>
     <div class="modal-sheet">
-      <h2 id="bank-modal-title">Cuenta bancaria</h2>
-      <div class="field">
-        <label for="bank-name-input">Banco</label>
-        <input type="text" id="bank-name-input" placeholder="Ej. BBVA" />
-      </div>
-      <div class="field">
-        <label for="bank-balance-input">Saldo</label>
-        <input type="number" id="bank-balance-input" inputmode="decimal" step="0.01" placeholder="0,00" />
-      </div>
-      <button class="btn-primary" id="bank-save-btn">Guardar</button>
-      <button class="btn-secondary" id="bank-cancel-btn" style="margin-top:8px">Cancelar</button>
-      <button class="btn-secondary btn-danger" id="bank-delete-btn" style="margin-top:8px" hidden>Eliminar cuenta</button>
+      <h2>¿En qué inversión?</h2>
+      <div id="pick-investment-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn-secondary" id="pick-investment-cancel" style="margin-top:12px">Cancelar</button>
     </div>
   </div>
 
+  <!-- Cuenta (efectivo o banco) -->
+  <div class="modal-overlay" id="account-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="account-modal-title">Nueva cuenta</h2>
+      <div class="field">
+        <label for="account-name-input">Nombre</label>
+        <input type="text" id="account-name-input" placeholder="Ej. BBVA, Efectivo" />
+      </div>
+      <div class="field">
+        <label for="account-type-select">Tipo</label>
+        <select id="account-type-select">
+          <option value="cash">Efectivo</option>
+          <option value="bank">Banco</option>
+        </select>
+      </div>
+      <div class="field" id="account-opening-field">
+        <label for="account-opening-input">Saldo inicial</label>
+        <input type="number" id="account-opening-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="account-save-btn">Guardar</button>
+      <button class="btn-secondary" id="account-adjust-btn" style="margin-top:8px" hidden>Ajustar saldo</button>
+      <button class="btn-secondary" id="account-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="account-delete-btn" style="margin-top:8px" hidden>Eliminar cuenta</button>
+    </div>
+  </div>
+
+  <!-- Ajustar saldo de una cuenta -->
+  <div class="modal-overlay" id="adjust-modal" hidden>
+    <div class="modal-sheet">
+      <h2>Ajustar saldo</h2>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:0">
+        Se registrará un movimiento de ajuste con la diferencia, con fecha de hoy — no se sobrescribe el saldo directamente.
+      </p>
+      <div class="field">
+        <label for="adjust-input">Saldo real actual</label>
+        <input type="number" id="adjust-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="adjust-save-btn">Guardar ajuste</button>
+      <button class="btn-secondary" id="adjust-cancel-btn" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Transferencia entre cuentas -->
+  <div class="modal-overlay" id="transfer-modal" hidden>
+    <div class="modal-sheet">
+      <h2>Transferencia</h2>
+      <div class="field">
+        <label for="transfer-from-select">Desde</label>
+        <select id="transfer-from-select"></select>
+      </div>
+      <div class="field">
+        <label for="transfer-to-select">Hacia</label>
+        <select id="transfer-to-select"></select>
+      </div>
+      <div class="field">
+        <label for="transfer-amount-input">Importe</label>
+        <input type="number" id="transfer-amount-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <div class="field">
+        <label for="transfer-date-input">Fecha</label>
+        <input type="date" id="transfer-date-input" />
+      </div>
+      <div class="field">
+        <label for="transfer-concept-input">Concepto (opcional)</label>
+        <input type="text" id="transfer-concept-input" placeholder="Ej. Ahorro del mes" />
+      </div>
+      <button class="btn-primary" id="transfer-save-btn">Guardar</button>
+      <button class="btn-secondary" id="transfer-cancel-btn" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Inversión: datos identificativos (el aportado/valor se calculan solos) -->
   <div class="modal-overlay" id="investment-modal" hidden>
     <div class="modal-sheet">
-      <h2 id="investment-modal-title">Inversión</h2>
+      <h2 id="investment-modal-title">Nueva inversión</h2>
       <div class="field">
-        <label for="inv-name-input">Nombre del fondo</label>
-        <input type="text" id="inv-name-input" placeholder="Ej. MSCI World" />
+        <label for="inv-name-input">Nombre</label>
+        <input type="text" id="inv-name-input" placeholder="Ej. MSCI World ETF" />
+      </div>
+      <div class="field">
+        <label for="inv-type-select">Tipo</label>
+        <select id="inv-type-select"></select>
+      </div>
+      <div class="field">
+        <label for="inv-ticker-input">Ticker (opcional)</label>
+        <input type="text" id="inv-ticker-input" placeholder="Ej. IWDA" />
+      </div>
+      <div class="field">
+        <label for="inv-isin-input">ISIN (opcional)</label>
+        <input type="text" id="inv-isin-input" placeholder="Ej. IE00B4L5Y983" />
       </div>
       <div class="field">
         <label for="inv-bank-input">Banco / broker</label>
         <input type="text" id="inv-bank-input" placeholder="Ej. MyInvestor" />
       </div>
-      <div class="field">
-        <label for="inv-invested-input">Cantidad invertida</label>
-        <input type="number" id="inv-invested-input" inputmode="decimal" step="0.01" placeholder="0,00" />
-      </div>
-      <div class="field">
-        <label for="inv-current-input">Valor actual</label>
-        <input type="number" id="inv-current-input" inputmode="decimal" step="0.01" placeholder="0,00" />
-      </div>
       <button class="btn-primary" id="inv-save-btn">Guardar</button>
       <button class="btn-secondary" id="inv-cancel-btn" style="margin-top:8px">Cancelar</button>
       <button class="btn-secondary btn-danger" id="inv-delete-btn" style="margin-top:8px" hidden>Eliminar inversión</button>
+    </div>
+  </div>
+
+  <!-- Operación de inversión -->
+  <div class="modal-overlay" id="operation-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="operation-modal-title">Nueva operación</h2>
+      <div class="field">
+        <label for="op-type-select">Tipo</label>
+        <select id="op-type-select"></select>
+      </div>
+      <div class="field">
+        <label for="op-date-input">Fecha</label>
+        <input type="date" id="op-date-input" />
+      </div>
+      <div class="field">
+        <label for="op-amount-input">Importe</label>
+        <input type="number" id="op-amount-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <details style="margin-bottom:14px">
+        <summary style="cursor:pointer;color:var(--text-dim);font-size:13px;font-weight:600">Más detalles (cantidad, precio, comisión, notas)</summary>
+        <div style="margin-top:12px">
+          <div class="field">
+            <label for="op-quantity-input">Cantidad / participaciones</label>
+            <input type="number" id="op-quantity-input" inputmode="decimal" step="0.0001" />
+          </div>
+          <div class="field">
+            <label for="op-price-input">Precio por participación</label>
+            <input type="number" id="op-price-input" inputmode="decimal" step="0.0001" />
+          </div>
+          <div class="field">
+            <label for="op-fees-input">Comisión</label>
+            <input type="number" id="op-fees-input" inputmode="decimal" step="0.01" />
+          </div>
+          <div class="field">
+            <label for="op-notes-input">Notas</label>
+            <input type="text" id="op-notes-input" />
+          </div>
+        </div>
+      </details>
+      <button class="btn-primary" id="op-save-btn">Guardar</button>
+      <button class="btn-secondary" id="op-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="op-delete-btn" style="margin-top:8px" hidden>Eliminar operación</button>
+    </div>
+  </div>
+
+  <!-- Objetivo financiero -->
+  <div class="modal-overlay" id="goal-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="goal-modal-title">Nuevo objetivo</h2>
+      <div class="field">
+        <label for="goal-kind-select">Tipo de objetivo</label>
+        <select id="goal-kind-select"></select>
+      </div>
+      <div class="field">
+        <label for="goal-name-input">Nombre</label>
+        <input type="text" id="goal-name-input" placeholder="Ej. Ahorrar para..." />
+      </div>
+      <div class="field">
+        <label for="goal-amount-input">Importe objetivo</label>
+        <input type="number" id="goal-amount-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="goal-save-btn">Guardar</button>
+      <button class="btn-secondary" id="goal-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="goal-delete-btn" style="margin-top:8px" hidden>Eliminar objetivo</button>
+    </div>
+  </div>
+
+  <!-- Seguimiento (watchlist) -->
+  <div class="modal-overlay" id="watchlist-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="watchlist-modal-title">Nuevo seguimiento</h2>
+      <div class="field">
+        <label for="wl-name-input">Nombre</label>
+        <input type="text" id="wl-name-input" placeholder="Ej. Vanguard FTSE All-World" />
+      </div>
+      <div class="field">
+        <label for="wl-status-select">Estado</label>
+        <select id="wl-status-select"></select>
+      </div>
+      <div class="field">
+        <label for="wl-type-select">Tipo</label>
+        <select id="wl-type-select"></select>
+      </div>
+      <div class="field">
+        <label for="wl-ticker-input">Ticker</label>
+        <input type="text" id="wl-ticker-input" />
+      </div>
+      <div class="field">
+        <label for="wl-isin-input">ISIN</label>
+        <input type="text" id="wl-isin-input" />
+      </div>
+      <div class="field">
+        <label for="wl-reason-input">Por qué me interesa</label>
+        <input type="text" id="wl-reason-input" />
+      </div>
+      <details style="margin-bottom:14px">
+        <summary style="cursor:pointer;color:var(--text-dim);font-size:13px;font-weight:600">Más detalles</summary>
+        <div style="margin-top:12px">
+          <div class="field">
+            <label for="wl-manager-input">Gestora</label>
+            <input type="text" id="wl-manager-input" />
+          </div>
+          <div class="field">
+            <label for="wl-ter-input">TER</label>
+            <input type="text" id="wl-ter-input" placeholder="Ej. 0,20%" />
+          </div>
+          <div class="field">
+            <label for="wl-currency-input">Divisa</label>
+            <input type="text" id="wl-currency-input" placeholder="Ej. USD" />
+          </div>
+          <div class="field">
+            <label for="wl-distribution-input">Acumulación / distribución</label>
+            <input type="text" id="wl-distribution-input" />
+          </div>
+          <div class="field">
+            <label for="wl-risk-input">Riesgo</label>
+            <input type="text" id="wl-risk-input" />
+          </div>
+          <div class="field">
+            <label for="wl-expectedreturn-input">Rentabilidad histórica</label>
+            <input type="text" id="wl-expectedreturn-input" />
+          </div>
+          <div class="field">
+            <label for="wl-thesis-input">Tesis de inversión</label>
+            <textarea id="wl-thesis-input" rows="3" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:15px"></textarea>
+          </div>
+          <div class="field">
+            <label for="wl-risks-input">Riesgos</label>
+            <textarea id="wl-risks-input" rows="2" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:15px"></textarea>
+          </div>
+          <div class="field">
+            <label for="wl-comment-input">Comentario</label>
+            <textarea id="wl-comment-input" rows="2" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:15px"></textarea>
+          </div>
+        </div>
+      </details>
+      <button class="btn-primary" id="wl-save-btn">Guardar</button>
+      <button class="btn-secondary" id="wl-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary" id="wl-promote-btn" style="margin-top:8px" hidden>Marcar como invertido →</button>
+      <button class="btn-secondary btn-danger" id="wl-delete-btn" style="margin-top:8px" hidden>Eliminar</button>
+    </div>
+  </div>
+
+  <!-- Idea de inversión -->
+  <div class="modal-overlay" id="idea-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="idea-modal-title">Nueva idea</h2>
+      <div class="field">
+        <label for="idea-title-input">Título</label>
+        <input type="text" id="idea-title-input" placeholder="Ej. ETF small caps" />
+      </div>
+      <div class="field">
+        <label for="idea-note-input">Nota (opcional)</label>
+        <input type="text" id="idea-note-input" />
+      </div>
+      <button class="btn-primary" id="idea-save-btn">Guardar</button>
+      <button class="btn-secondary" id="idea-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary" id="idea-promote-btn" style="margin-top:8px">Pasar a seguimiento →</button>
+      <button class="btn-secondary btn-danger" id="idea-delete-btn" style="margin-top:8px" hidden>Eliminar</button>
     </div>
   </div>
 
