@@ -91,3 +91,81 @@ export function drawBars(canvas, bars, opts = {}) {
     ctx.fillText(b.label, gx, height - 6);
   });
 }
+
+// points: [{date, value}], ordenados de más antiguo a más reciente.
+export function drawLine(canvas, points, opts = {}) {
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 320;
+  const height = canvas.clientHeight || 160;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, width, height);
+
+  const padTop = 12;
+  const padBottom = 22;
+  const padX = 8;
+  const chartH = height - padTop - padBottom;
+  const chartW = width - padX * 2;
+
+  if (!points.length) {
+    ctx.fillStyle = opts.labelColor || "#94a3b8";
+    ctx.font = "12px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(opts.emptyText || "Todavía sin histórico", width / 2, height / 2);
+    return;
+  }
+
+  if (points.length === 1) {
+    points = [{ ...points[0] }, points[0]];
+  }
+
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, min + 1);
+  const range = max - min || 1;
+
+  const xAt = (i) => padX + (i / (points.length - 1)) * chartW;
+  const yAt = (v) => padTop + chartH - ((v - min) / range) * chartH;
+
+  const lineColor = opts.lineColor || "#c9a24a";
+  const fillColor = opts.fillColor || "rgba(201,162,74,0.15)";
+
+  ctx.beginPath();
+  ctx.moveTo(xAt(0), yAt(points[0].value));
+  points.forEach((p, i) => ctx.lineTo(xAt(i), yAt(p.value)));
+  ctx.lineTo(xAt(points.length - 1), padTop + chartH);
+  ctx.lineTo(xAt(0), padTop + chartH);
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
+
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = xAt(i);
+    const y = yAt(p.value);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+
+  const lastX = xAt(points.length - 1);
+  const lastY = yAt(points[points.length - 1].value);
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = lineColor;
+  ctx.fill();
+
+  if (opts.showLabels !== false) {
+    ctx.fillStyle = opts.labelColor || "#94a3b8";
+    ctx.font = "11px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(points[0].dateLabel || "", padX, height - 6);
+    ctx.textAlign = "right";
+    ctx.fillText(points[points.length - 1].dateLabel || "", padX + chartW, height - 6);
+  }
+}

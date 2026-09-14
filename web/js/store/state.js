@@ -1,7 +1,7 @@
 import { uid, todayISO, round2 } from "./utils.js";
 
 const STORAGE_KEY = "cuentas.v1";
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export const DEFAULT_CATEGORIES = [
   { id: "comida", name: "Comida", icon: "🍽️", color: "#c1694f" },
@@ -50,6 +50,7 @@ function defaultState() {
     watchlist: [],
     ideas: [],
     goals: [],
+    debts: [],
     netWorthSnapshots: [],
   };
 }
@@ -168,6 +169,7 @@ function load() {
       watchlist: normalizeArray(parsed.watchlist),
       ideas: normalizeArray(parsed.ideas),
       goals: normalizeArray(parsed.goals),
+      debts: normalizeArray(parsed.debts),
       netWorthSnapshots: normalizeArray(parsed.netWorthSnapshots),
     };
   } catch (e) {
@@ -221,6 +223,7 @@ export function importData(json) {
     watchlist: normalizeArray(parsed.watchlist),
     ideas: normalizeArray(parsed.ideas),
     goals: normalizeArray(parsed.goals),
+    debts: normalizeArray(parsed.debts),
     netWorthSnapshots: normalizeArray(parsed.netWorthSnapshots),
   });
 }

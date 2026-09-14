@@ -23,6 +23,32 @@
 
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
+      <div class="hero-balance">
+        <div class="label">Patrimonio neto</div>
+        <div class="amount" id="net-worth-amount">0,00 €</div>
+        <div class="wallet-total-sub" id="net-worth-change"></div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Activos</div>
+          <div class="stat-value" id="nw-assets">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Deudas</div>
+          <div class="stat-value expense" id="nw-debts">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Liquidez</div>
+          <div class="stat-value" id="nw-liquidity">0,00 €</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:6px">Evolución patrimonial</div>
+        <canvas id="networth-chart" style="width:100%;height:140px"></canvas>
+      </div>
+
       <div class="segmented" id="period-toggle">
         <button type="button" class="active" data-period="week">Semana</button>
         <button type="button" data-period="month">Mes</button>
@@ -30,10 +56,6 @@
         <button type="button" data-period="year">Año</button>
       </div>
 
-      <div class="hero-balance">
-        <div class="label" id="dash-period-label">Balance de la semana</div>
-        <div class="amount" id="dash-balance">0,00 €</div>
-      </div>
       <div class="stat-row">
         <div class="stat income">
           <div class="stat-label">Ingresos</div>
@@ -43,6 +65,21 @@
           <div class="stat-label">Gastos</div>
           <div class="stat-value" id="dash-expense">0,00 €</div>
         </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label" id="dash-period-label">Ahorro</div>
+          <div class="stat-value" id="dash-balance">0,00 €</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Tasa de ahorro</div>
+          <div class="stat-value" id="dash-savings-rate">0%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title" style="margin-bottom:10px">Ingresos y gastos · últimos 6 meses</div>
+        <canvas id="dash-bars" style="width:100%;height:150px"></canvas>
       </div>
 
       <div class="card">
@@ -54,8 +91,11 @@
       </div>
 
       <div class="card">
-        <div class="section-title" style="margin-bottom:10px">Últimos meses</div>
-        <canvas id="dash-bars" style="width:100%;height:150px"></canvas>
+        <div class="section-title" style="margin-bottom:10px">Distribución del patrimonio</div>
+        <div class="cat-breakdown-row">
+          <canvas class="donut" id="wealth-donut" width="120" height="120" style="width:120px;height:120px"></canvas>
+          <div class="cat-legend" id="wealth-legend"></div>
+        </div>
       </div>
 
       <div class="section-title">Últimos movimientos</div>
@@ -78,7 +118,23 @@
         <button class="chip" data-type="expense">Gastos</button>
         <button class="chip" data-type="income">Ingresos</button>
       </div>
+      <div class="filters" id="period-filters">
+        <button class="chip active" data-range="all">Todo el tiempo</button>
+        <button class="chip" data-range="week">Esta semana</button>
+        <button class="chip" data-range="month">Este mes</button>
+        <button class="chip" data-range="quarter">Este trimestre</button>
+        <button class="chip" data-range="year">Este año</button>
+      </div>
+      <div class="filters" id="account-filters"></div>
       <div class="filters" id="cat-filters"></div>
+      <div class="field" style="margin-bottom:0">
+        <select id="sort-select">
+          <option value="date-desc">Más recientes primero</option>
+          <option value="date-asc">Más antiguos primero</option>
+          <option value="amount-desc">Importe: mayor a menor</option>
+          <option value="amount-asc">Importe: menor a mayor</option>
+        </select>
+      </div>
       <div id="movements-list" style="display:flex;flex-direction:column;gap:16px"></div>
     </section>
 
@@ -126,39 +182,72 @@
 
     <!-- WALLET (Cartera) -->
     <section class="view" id="view-wallet">
-      <div class="wallet-total">
-        <div class="label">Patrimonio total</div>
-        <div class="amount" id="wallet-total">0,00 €</div>
-        <div class="wallet-total-sub" id="wallet-total-change"></div>
+      <div class="segmented" id="wallet-tabs">
+        <button type="button" class="active" data-tab="general">General</button>
+        <button type="button" data-tab="assets">Activos</button>
+        <button type="button" data-tab="watchlist">Seguimiento</button>
+        <button type="button" data-tab="ideas">Ideas</button>
       </div>
 
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Liquidez</div>
-          <div class="stat-value" id="wallet-liquidity">0,00 €</div>
+      <!-- General -->
+      <div class="wallet-panel active" id="wallet-panel-general">
+        <div class="wallet-total">
+          <div class="label">Valor de la cartera</div>
+          <div class="amount" id="portfolio-value">0,00 €</div>
+          <div class="wallet-total-sub" id="portfolio-return"></div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Inversiones</div>
-          <div class="stat-value" id="wallet-investments-value">0,00 €</div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <div class="stat-label">Aportado</div>
+            <div class="stat-value" id="portfolio-invested">0,00 €</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Beneficio</div>
+            <div class="stat-value" id="portfolio-gain">0,00 €</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="wallet-section-header">
+            <div class="section-title">Evolución de cartera</div>
+          </div>
+          <div class="filters" id="horizon-toggle" style="margin:10px 0"></div>
+          <canvas id="portfolio-chart" style="width:100%;height:140px"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="section-title" style="margin-bottom:10px">Distribución</div>
+          <div class="cat-breakdown-row">
+            <canvas class="donut" id="portfolio-donut" width="120" height="120" style="width:120px;height:120px"></canvas>
+            <div class="cat-legend" id="portfolio-legend"></div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="wallet-section-header">
-          <div class="section-title">Cuentas</div>
-          <div class="total" id="accounts-total">0,00 €</div>
+      <!-- Activos -->
+      <div class="wallet-panel" id="wallet-panel-assets">
+        <div class="card">
+          <div class="wallet-section-header">
+            <div class="section-title">Tus inversiones</div>
+            <div class="total" id="investments-total">0,00 €</div>
+          </div>
+          <div id="investments-list" style="margin-top:6px"></div>
+          <button class="add-link" id="add-investment-btn">+ Añadir inversión</button>
         </div>
-        <div id="accounts-list" style="margin-top:6px"></div>
-        <button class="add-link" id="add-account-btn">+ Añadir cuenta</button>
       </div>
 
-      <div class="card">
-        <div class="wallet-section-header">
-          <div class="section-title">Inversiones</div>
-          <div class="total" id="investments-total">0,00 €</div>
-        </div>
-        <div id="investments-list" style="margin-top:6px"></div>
-        <button class="add-link" id="add-investment-btn">+ Añadir inversión</button>
+      <!-- Seguimiento -->
+      <div class="wallet-panel" id="wallet-panel-watchlist">
+        <div class="filters" id="watchlist-status-filters"></div>
+        <div id="watchlist-list" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button class="btn-primary" id="add-watchlist-btn">+ Añadir a seguimiento</button>
+      </div>
+
+      <!-- Ideas -->
+      <div class="wallet-panel" id="wallet-panel-ideas">
+        <div id="ideas-list" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button class="btn-primary" id="add-idea-btn">+ Nueva idea</button>
       </div>
     </section>
 
@@ -211,13 +300,13 @@
       </div>
 
       <div class="card">
-        <div class="section-title" style="margin-bottom:6px">Inversión</div>
-        <div class="settings-row" id="open-watchlist-btn" style="cursor:pointer">
-          <span>Seguimiento de fondos/ETFs</span>
+        <div class="section-title" style="margin-bottom:6px">Patrimonio</div>
+        <div class="settings-row" id="open-accounts-btn" style="cursor:pointer">
+          <span>Cuentas bancarias</span>
           <span>›</span>
         </div>
-        <div class="settings-row" id="open-ideas-btn" style="cursor:pointer">
-          <span>Ideas de inversión</span>
+        <div class="settings-row" id="open-debts-btn" style="cursor:pointer">
+          <span>Deudas</span>
           <span>›</span>
         </div>
       </div>
@@ -249,17 +338,28 @@
       </div>
     </section>
 
-    <!-- WATCHLIST (Seguimiento) -->
-    <section class="view" id="view-watchlist">
-      <div class="filters" id="watchlist-status-filters"></div>
-      <div id="watchlist-list" style="display:flex;flex-direction:column;gap:10px"></div>
-      <button class="btn-primary" id="add-watchlist-btn">+ Añadir a seguimiento</button>
+    <!-- CUENTAS -->
+    <section class="view" id="view-accounts">
+      <div class="card">
+        <div class="wallet-section-header">
+          <div class="section-title">Cuentas</div>
+          <div class="total" id="accounts-total">0,00 €</div>
+        </div>
+        <div id="accounts-list" style="margin-top:6px"></div>
+        <button class="add-link" id="add-account-btn">+ Añadir cuenta</button>
+      </div>
     </section>
 
-    <!-- IDEAS -->
-    <section class="view" id="view-ideas">
-      <div id="ideas-list" style="display:flex;flex-direction:column;gap:10px"></div>
-      <button class="btn-primary" id="add-idea-btn">+ Nueva idea</button>
+    <!-- DEUDAS -->
+    <section class="view" id="view-debts">
+      <div class="card">
+        <div class="wallet-section-header">
+          <div class="section-title">Deudas</div>
+          <div class="total" id="debts-total">0,00 €</div>
+        </div>
+        <div id="debts-list" style="margin-top:6px"></div>
+        <button class="add-link" id="add-debt-btn">+ Añadir deuda</button>
+      </div>
     </section>
   </div>
 
@@ -363,6 +463,24 @@
       </div>
       <button class="btn-primary" id="adjust-save-btn">Guardar ajuste</button>
       <button class="btn-secondary" id="adjust-cancel-btn" style="margin-top:8px">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Deuda -->
+  <div class="modal-overlay" id="debt-modal" hidden>
+    <div class="modal-sheet">
+      <h2 id="debt-modal-title">Nueva deuda</h2>
+      <div class="field">
+        <label for="debt-name-input">Nombre</label>
+        <input type="text" id="debt-name-input" placeholder="Ej. Préstamo coche" />
+      </div>
+      <div class="field">
+        <label for="debt-amount-input">Importe pendiente</label>
+        <input type="number" id="debt-amount-input" inputmode="decimal" step="0.01" placeholder="0,00" />
+      </div>
+      <button class="btn-primary" id="debt-save-btn">Guardar</button>
+      <button class="btn-secondary" id="debt-cancel-btn" style="margin-top:8px">Cancelar</button>
+      <button class="btn-secondary btn-danger" id="debt-delete-btn" style="margin-top:8px" hidden>Eliminar deuda</button>
     </div>
   </div>
 
