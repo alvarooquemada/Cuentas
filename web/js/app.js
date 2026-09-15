@@ -816,6 +816,42 @@ function renderPortfolioGeneral() {
       portfolioLegend.appendChild(row);
     });
   }
+
+  renderWalletLiquidity();
+}
+
+function renderWalletLiquidity() {
+  const currency = Store.getSettings().currency;
+  const accounts = Store.getAccounts();
+  $("#wallet-liquidity-total").textContent = formatMoney(Store.getTotalLiquidity(), currency);
+  const list = $("#wallet-liquidity-list");
+  list.innerHTML = "";
+  if (!accounts.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:12px 0">Sin cuentas todavía. Añade tu efectivo y tus cuentas bancarias.</div>';
+    return;
+  }
+  [
+    { type: "cash", label: "Efectivo" },
+    { type: "bank", label: "Bancos" },
+  ].forEach((group) => {
+    const accs = accounts.filter((a) => a.type === group.type);
+    if (!accs.length) return;
+    const subtotal = accs.reduce((s, a) => s + Store.getAccountBalance(a.id), 0);
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px";
+    header.innerHTML = `<span>${group.label}</span><span>${formatMoney(subtotal, currency)}</span>`;
+    list.appendChild(header);
+    accs.forEach((a) => {
+      const row = document.createElement("div");
+      row.className = "wallet-item-row";
+      row.innerHTML = `
+        <div><div class="wi-name">${escapeHtml(a.name)}</div></div>
+        <div><div class="wi-value">${formatMoney(Store.getAccountBalance(a.id), currency)}</div></div>
+      `;
+      row.addEventListener("click", () => openAccountModal(a.id));
+      list.appendChild(row);
+    });
+  });
 }
 
 function renderInvestmentsList() {
@@ -966,6 +1002,7 @@ function openAccountModal(accountId) {
   $("#account-modal").hidden = false;
 }
 $("#add-account-btn").addEventListener("click", () => openAccountModal(null));
+$("#wallet-add-account-btn").addEventListener("click", () => openAccountModal(null));
 $("#account-cancel-btn").addEventListener("click", () => ($("#account-modal").hidden = true));
 $("#account-save-btn").addEventListener("click", () => {
   const name = $("#account-name-input").value.trim();
@@ -983,6 +1020,7 @@ $("#account-save-btn").addEventListener("click", () => {
   Store.recordNetWorthSnapshot();
   $("#account-modal").hidden = true;
   renderAccountsView();
+  renderWalletLiquidity();
   showToast("Cuenta guardada");
 });
 $("#account-delete-btn").addEventListener("click", () => {
@@ -991,6 +1029,7 @@ $("#account-delete-btn").addEventListener("click", () => {
     Store.recordNetWorthSnapshot();
     $("#account-modal").hidden = true;
     renderAccountsView();
+    renderWalletLiquidity();
     showToast("Cuenta eliminada");
   }
 });
@@ -1010,6 +1049,7 @@ $("#adjust-save-btn").addEventListener("click", () => {
   Store.recordNetWorthSnapshot();
   $("#adjust-modal").hidden = true;
   renderAccountsView();
+  renderWalletLiquidity();
   showToast("Saldo ajustado");
 });
 
