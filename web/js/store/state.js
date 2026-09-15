@@ -132,46 +132,52 @@ function normalizeArray(v) {
   return Array.isArray(v) ? v : [];
 }
 
+// Compartido entre cargar de localStorage, importar un JSON y recibir
+// datos de Firestore: siempre el mismo saneado, así no hay tres
+// versiones distintas de "qué es un estado válido".
+function normalizeParsed(parsed) {
+  if (!parsed || typeof parsed !== "object") return defaultState();
+
+  const fromVersion = parsed.version || 1;
+  const categories = normalizeArray(parsed.categories).length
+    ? migrateCategoryColors(parsed.categories)
+    : defaultState().categories;
+
+  let accounts = normalizeArray(parsed.accounts);
+  let investments = normalizeArray(parsed.investments);
+
+  if (fromVersion < 3) {
+    const migrated = migrateV2ToV3(parsed);
+    if (!accounts.length) accounts = migrated.accounts;
+    if (!investments.length) investments = migrated.investments;
+  }
+
+  const movements = normalizeArray(parsed.movements).map((m) => ({
+    accountId: null,
+    ...m,
+  }));
+
+  return {
+    version: SCHEMA_VERSION,
+    settings: { ...defaultState().settings, ...(parsed.settings || {}) },
+    categories,
+    movements,
+    accounts,
+    transfers: normalizeArray(parsed.transfers),
+    investments,
+    watchlist: normalizeArray(parsed.watchlist),
+    ideas: normalizeArray(parsed.ideas),
+    goals: normalizeArray(parsed.goals),
+    debts: normalizeArray(parsed.debts),
+    netWorthSnapshots: normalizeArray(parsed.netWorthSnapshots),
+  };
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return defaultState();
-
-    const fromVersion = parsed.version || 1;
-    const categories = normalizeArray(parsed.categories).length
-      ? migrateCategoryColors(parsed.categories)
-      : defaultState().categories;
-
-    let accounts = normalizeArray(parsed.accounts);
-    let investments = normalizeArray(parsed.investments);
-
-    if (fromVersion < 3) {
-      const migrated = migrateV2ToV3(parsed);
-      if (!accounts.length) accounts = migrated.accounts;
-      if (!investments.length) investments = migrated.investments;
-    }
-
-    const movements = normalizeArray(parsed.movements).map((m) => ({
-      accountId: null,
-      ...m,
-    }));
-
-    return {
-      version: SCHEMA_VERSION,
-      settings: { ...defaultState().settings, ...(parsed.settings || {}) },
-      categories,
-      movements,
-      accounts,
-      transfers: normalizeArray(parsed.transfers),
-      investments,
-      watchlist: normalizeArray(parsed.watchlist),
-      ideas: normalizeArray(parsed.ideas),
-      goals: normalizeArray(parsed.goals),
-      debts: normalizeArray(parsed.debts),
-      netWorthSnapshots: normalizeArray(parsed.netWorthSnapshots),
-    };
+    return normalizeParsed(JSON.parse(raw));
   } catch (e) {
     console.error("Error leyendo datos, se restablece almacenamiento local", e);
     return defaultState();
@@ -181,6 +187,63 @@ function load() {
 let state = load();
 const listeners = new Set();
 
+// ---- Sincronización con Firestore ----
+// currentUid: usuario autenticado actual (null = sin sesión, solo local).
+// cloud es la única fuente de verdad cuando hay sesión: cada persist()
+// local también se sube (con un pequeño retraso para no escribir en
+// cada tecla), y cualquier cambio remoto (el otro dispositivo) se baja
+// solo mediante onSnapshot.
+let currentUid = null;
+let unsubscribeCloud = null;
+let saveTimer = null;
+let cloudDeps = null; // { db, doc, getDoc, setDoc, onSnapshot } — inyectado para no acoplar este módulo a Firebase si no hay sesión
+
+function scheduleCloudSave() {
+  if (!currentUid || !cloudDeps) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const { db, doc, setDoc } = cloudDeps;
+    setDoc(doc(db, "users", currentUid), state).catch((e) => console.error("Error guardando en la nube", e));
+  }, 400);
+}
+
+export async function connectCloud(userUid, deps) {
+  currentUid = userUid;
+  cloudDeps = deps;
+  const { db, doc, getDoc, onSnapshot } = deps;
+  const ref = doc(db, "users", currentUid);
+
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    state = normalizeParsed(snap.data());
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } else {
+    // Primera vez con esta cuenta: sube lo que ya hubiera en este
+    // dispositivo (o el estado por defecto) como punto de partida.
+    await deps.setDoc(ref, state);
+  }
+  listeners.forEach((fn) => fn(state));
+
+  unsubscribeCloud = onSnapshot(ref, (snap2) => {
+    if (snap2.metadata.hasPendingWrites) return; // es nuestro propio guardado, ya lo tenemos en memoria
+    if (!snap2.exists()) return;
+    state = normalizeParsed(snap2.data());
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    listeners.forEach((fn) => fn(state));
+  });
+}
+
+export function disconnectCloud() {
+  if (unsubscribeCloud) unsubscribeCloud();
+  unsubscribeCloud = null;
+  currentUid = null;
+  cloudDeps = null;
+}
+
+export function isCloudConnected() {
+  return !!currentUid;
+}
+
 export function getState() {
   return state;
 }
@@ -188,6 +251,7 @@ export function getState() {
 export function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   listeners.forEach((fn) => fn(state));
+  scheduleCloudSave();
 }
 
 export function subscribe(fn) {
@@ -210,20 +274,5 @@ export function exportData() {
 }
 
 export function importData(json) {
-  const parsed = JSON.parse(json);
-  const base = defaultState();
-  replaceState({
-    version: SCHEMA_VERSION,
-    settings: { ...base.settings, ...(parsed.settings || {}) },
-    categories: normalizeArray(parsed.categories).length ? parsed.categories : base.categories,
-    movements: normalizeArray(parsed.movements).map((m) => ({ accountId: null, ...m })),
-    accounts: normalizeArray(parsed.accounts),
-    transfers: normalizeArray(parsed.transfers),
-    investments: normalizeArray(parsed.investments),
-    watchlist: normalizeArray(parsed.watchlist),
-    ideas: normalizeArray(parsed.ideas),
-    goals: normalizeArray(parsed.goals),
-    debts: normalizeArray(parsed.debts),
-    netWorthSnapshots: normalizeArray(parsed.netWorthSnapshots),
-  });
+  replaceState(normalizeParsed(JSON.parse(json)));
 }

@@ -32,6 +32,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 html, body {
   margin: 0;
@@ -450,3 +451,38 @@ input[type="text"], input[type="number"], input[type="date"], select {
 .action-sheet-btn:last-of-type { margin-bottom: 0; }
 
 details summary::-webkit-details-marker { color: var(--text-dim); }
+
+/* ---- Autenticación ---- */
+#auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 24px;
+  text-align: center;
+}
+.auth-logo { font-size: 36px; margin-bottom: 6px; }
+.auth-title { font-size: 22px; font-weight: 800; margin: 0 0 6px; color: var(--text); }
+.auth-sub { font-size: 13px; color: var(--text-dim); margin: 0 0 20px; line-height: 1.4; }
+.auth-card .field { text-align: left; }
+.auth-error {
+  background: var(--expense-soft);
+  color: var(--expense);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+  text-align: left;
+}

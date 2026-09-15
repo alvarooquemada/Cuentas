@@ -1,4 +1,14 @@
-import { getState, persist, subscribe, resetState, exportData, importData } from "./state.js";
+import {
+  getState,
+  persist,
+  subscribe,
+  resetState,
+  exportData,
+  importData,
+  connectCloud,
+  disconnectCloud,
+  isCloudConnected,
+} from "./state.js";
 import * as Categories from "./categories.js";
 import * as Movements from "./movements.js";
 import * as Accounts from "./accounts.js";
@@ -24,6 +34,9 @@ export const Store = {
   exportData,
   importData,
   resetAll: resetState,
+  connectCloud,
+  disconnectCloud,
+  isCloudConnected,
 
   // Categorías
   getCategories: Categories.getCategories,

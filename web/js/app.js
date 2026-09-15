@@ -14,6 +14,18 @@ import {
   GOAL_KINDS,
 } from "./store/index.js";
 import { drawDonut, drawBars, drawLine } from "./charts.js";
+import {
+  auth,
+  db,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+} from "./firebase.js";
 
 const INVESTMENT_TYPE_COLORS = {
   etf: "#4f6f8f",
@@ -615,6 +627,7 @@ $("#delete-movement-btn").addEventListener("click", () => {
 function renderSettings() {
   const settings = Store.getSettings();
   $("#currency-select").value = settings.currency;
+  $("#account-email-label").textContent = auth.currentUser ? auth.currentUser.email : "—";
 
   const list = $("#category-manage-list");
   list.innerHTML = "";
@@ -1561,6 +1574,84 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// ---------- Init ----------
-$("#date-input").value = todayISO();
-setView("dashboard");
+// ---------- Autenticación ----------
+let authMode = "login";
+
+$("#auth-toggle-btn").addEventListener("click", () => {
+  authMode = authMode === "login" ? "register" : "login";
+  $("#auth-submit-btn").textContent = authMode === "login" ? "Entrar" : "Crear cuenta";
+  $("#auth-toggle-btn").textContent = authMode === "login" ? "¿No tienes cuenta? Crear una" : "¿Ya tienes cuenta? Entrar";
+  $("#auth-mode-sub").textContent = authMode === "login"
+    ? "Inicia sesión para sincronizar tus datos entre dispositivos."
+    : "Crea una cuenta para empezar a sincronizar tus datos entre dispositivos.";
+  $("#auth-error").hidden = true;
+});
+
+const AUTH_ERROR_MESSAGES = {
+  "auth/invalid-email": "Ese email no es válido.",
+  "auth/missing-password": "Introduce una contraseña.",
+  "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+  "auth/email-already-in-use": "Ya existe una cuenta con ese email. Prueba a iniciar sesión.",
+  "auth/invalid-credential": "Email o contraseña incorrectos.",
+  "auth/wrong-password": "Email o contraseña incorrectos.",
+  "auth/user-not-found": "No existe ninguna cuenta con ese email.",
+  "auth/too-many-requests": "Demasiados intentos. Espera un momento y vuelve a intentarlo.",
+  "auth/network-request-failed": "Sin conexión a internet. Comprueba tu wifi/datos.",
+};
+
+$("#auth-submit-btn").addEventListener("click", async () => {
+  const email = $("#auth-email-input").value.trim();
+  const password = $("#auth-password-input").value;
+  $("#auth-error").hidden = true;
+  if (!email || !password) {
+    $("#auth-error").textContent = "Rellena email y contraseña.";
+    $("#auth-error").hidden = false;
+    return;
+  }
+  $("#auth-submit-btn").disabled = true;
+  try {
+    if (authMode === "login") {
+      await signInWithEmailAndPassword(auth, email, password);
+    } else {
+      await createUserWithEmailAndPassword(auth, email, password);
+    }
+  } catch (e) {
+    $("#auth-error").textContent = AUTH_ERROR_MESSAGES[e.code] || "No se pudo completar la operación.";
+    $("#auth-error").hidden = false;
+  } finally {
+    $("#auth-submit-btn").disabled = false;
+  }
+});
+
+$("#logout-btn").addEventListener("click", () => {
+  if (confirm("¿Cerrar sesión? Tus datos se quedan guardados en la nube.")) {
+    signOut(auth);
+  }
+});
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    try {
+      await Store.connectCloud(user.uid, { db, doc, getDoc, setDoc, onSnapshot });
+    } catch (e) {
+      console.error("Error conectando con la nube", e);
+    }
+    $("#auth-screen").hidden = true;
+    $("#app").hidden = false;
+    $(".bottom-nav").hidden = false;
+    $("#date-input").value = todayISO();
+    setView("dashboard");
+  } else {
+    Store.disconnectCloud();
+    $("#auth-screen").hidden = false;
+    $("#app").hidden = true;
+    $(".bottom-nav").hidden = true;
+    $("#auth-email-input").value = "";
+    $("#auth-password-input").value = "";
+    authMode = "login";
+    $("#auth-submit-btn").textContent = "Entrar";
+    $("#auth-toggle-btn").textContent = "¿No tienes cuenta? Crear una";
+    $("#auth-mode-sub").textContent = "Inicia sesión para sincronizar tus datos entre dispositivos.";
+    $("#auth-error").hidden = true;
+  }
+});

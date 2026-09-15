@@ -1,4 +1,4 @@
-const CACHE_NAME = "cuentas-cache-v3";
+const CACHE_NAME = "cuentas-cache-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,11 @@ const ASSETS = [
   "./css/styles.css",
   "./js/app.js",
   "./js/charts.js",
+  "./js/firebase.js",
+  "./js/firebase-config.js",
+  "./js/vendor/firebase/firebase-app.js",
+  "./js/vendor/firebase/firebase-auth.js",
+  "./js/vendor/firebase/firebase-firestore.js",
   "./js/store/index.js",
   "./js/store/state.js",
   "./js/store/debts.js",
